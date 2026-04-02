@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
 from .models import *
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -17,6 +18,20 @@ class UsuariSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuari
         fields = ['id', 'username', 'email', 'provider']
+
+class RegistreSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+ 
+    class Meta:
+        model = Usuari
+        fields = ['username', 'email', 'password']
+ 
+    def create(self, validated_data):
+        return Usuari.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            password=validated_data['password'],
+        )
 
 class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source='producte.nom', read_only=True)
