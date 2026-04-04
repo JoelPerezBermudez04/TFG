@@ -33,6 +33,23 @@ class RegistreSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
         )
 
+class EditarUsuariSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuari
+        fields = ['username', 'email']
+ 
+    def validate_username(self, value):
+        user = self.instance
+        if Usuari.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError('Aquest username ja està en ús.')
+        return value
+ 
+    def validate_email(self, value):
+        user = self.instance
+        if Usuari.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError('Aquest email ja està en ús.')
+        return value
+
 class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source='producte.nom', read_only=True)
 
