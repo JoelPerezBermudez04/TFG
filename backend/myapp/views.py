@@ -165,6 +165,25 @@ class ProducteViewSet(ViewSet):
 
     def list(self, request):
         queryset = Producte.objects.select_related('categoria').all()
+        categoria = request.query_params.get('categoria')
+        cerca = request.query_params.get('cerca')
+        if categoria:
+            queryset = queryset.filter(categoria__nom__iexact=categoria)
+        if cerca:
+            from thefuzz import process
+            productes = list(queryset)
+            opcions = {
+                p.pk: [p.nom, (p.alias_api or {}).get('nom_en', '')]
+                for p in productes
+            }
+            cerca_lower = cerca.lower()
+            pks_coincidents = [
+                pk for pk, noms in opcions.items()
+                if any(process.extractOne(cerca_lower, [n.lower()], score_cutoff=70)
+                       for n in noms if n)
+            ]
+            queryset = [p for p in productes if p.pk in pks_coincidents]
+            return Response(ProducteSerializer(queryset, many=True).data)
         return Response(ProducteSerializer(queryset, many=True).data)
 
     def retrieve(self, request, pk=None):
