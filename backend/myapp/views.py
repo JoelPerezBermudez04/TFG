@@ -2,7 +2,7 @@ from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
@@ -17,7 +17,9 @@ def get_tokens(user):
         'access':  str(refresh.access_token),
     }
 
+
 class UsuariViewSet(ViewSet):
+
     def list(self, request):
         return Response()
 
@@ -78,7 +80,6 @@ class UsuariViewSet(ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         return Response({'missatge': 'Sessió tancada correctament.'}, status=status.HTTP_200_OK)
-    
 
     @action(detail=False, methods=['post'], url_path='refresh-token')
     def refresh_token(self, request):
@@ -99,11 +100,11 @@ class UsuariViewSet(ViewSet):
                 {'error': 'Token invàlid o ja caducat.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        
+
     @action(detail=False, methods=['get'], url_path='perfil')
     def perfil(self, request):
         return Response(UsuariSerializer(request.user).data)
-    
+
     @action(detail=False, methods=['patch'], url_path='editar')
     def editar(self, request):
         serializer = EditarUsuariSerializer(
@@ -113,7 +114,7 @@ class UsuariViewSet(ViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(UsuariSerializer(request.user).data)
-    
+
     @action(detail=False, methods=['post'], url_path='canviar-password')
     def canviar_password(self, request):
         user = request.user
@@ -140,7 +141,7 @@ class UsuariViewSet(ViewSet):
             {'missatge': 'Contrasenya canviada.', 'tokens': get_tokens(user)},
             status=status.HTTP_200_OK
         )
-    
+
     @action(detail=False, methods=['delete'], url_path='eliminar')
     def eliminar(self, request):
         user = request.user
@@ -153,13 +154,18 @@ class UsuariViewSet(ViewSet):
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class ProducteViewSet(ViewSet):
-    permission_classes = [IsAuthenticated]
- 
+
+    def get_permissions(self):
+        if self.action in {'create', 'update', 'destroy'}:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     def list(self, request):
         queryset = Producte.objects.select_related('categoria').all()
         return Response(ProducteSerializer(queryset, many=True).data)
- 
+
     def retrieve(self, request, pk=None):
         try:
             producte = Producte.objects.select_related('categoria').get(pk=pk)
@@ -167,39 +173,75 @@ class ProducteViewSet(ViewSet):
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ProducteSerializer(producte).data)
 
+    def create(self, request):
+        serializer = ProducteCreateUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        producte = serializer.save()
+        return Response(ProducteSerializer(producte).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        try:
+            producte = Producte.objects.get(pk=pk)
+        except Producte.DoesNotExist:
+            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProducteCreateUpdateSerializer(producte, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        producte = serializer.save()
+        return Response(ProducteSerializer(producte).data)
+
+    def destroy(self, request, pk=None):
+        try:
+            producte = Producte.objects.get(pk=pk)
+        except Producte.DoesNotExist:
+            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+        producte.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class CategoriaViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
-    
+
     def list(self, request):
         return Response(CategoriaSerializer(Categoria.objects.all(), many=True).data)
 
 
 class ProducteInventariViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
         qs = ProducteInventari.objects.filter(usuari=request.user).select_related('producte')
         return Response(ProducteInventariSerializer(qs, many=True).data)
- 
+
+    def retrieve(self, request, pk=None):
+        try:
+            item = ProducteInventari.objects.select_related('producte').get(pk=pk, usuari=request.user)
+        except ProducteInventari.DoesNotExist:
+            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ProducteInventariSerializer(item).data)
+
     def create(self, request):
-        serializer = ProducteInventariSerializer(data={**request.data, 'usuari': request.user.id})
+        serializer = ProducteInventariSerializer(
+            data={**request.data, 'usuari': request.user.id}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
- 
+
     def update(self, request, pk=None):
         try:
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ProducteInventariSerializer(item, data=request.data, partial=True)
+        # Usem el serializer restringit: l'usuari només pot tocar quantitat, unitat i data_caducitat
+        serializer = ProducteInventariEditSerializer(item, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
-        return Response(serializer.data)
- 
+        return Response(ProducteInventariSerializer(item).data)
+
     def destroy(self, request, pk=None):
         try:
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
@@ -211,18 +253,20 @@ class ProducteInventariViewSet(ViewSet):
 
 class ItemCompraViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
         qs = ItemCompra.objects.filter(usuari=request.user).select_related('producte')
         return Response(ItemCompraSerializer(qs, many=True).data)
- 
+
     def create(self, request):
-        serializer = ItemCompraSerializer(data={**request.data, 'usuari': request.user.id})
+        serializer = ItemCompraSerializer(
+            data={**request.data, 'usuari': request.user.id}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
- 
+
     def update(self, request, pk=None):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
@@ -233,7 +277,7 @@ class ItemCompraViewSet(ViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data)
- 
+
     def destroy(self, request, pk=None):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
@@ -241,34 +285,38 @@ class ItemCompraViewSet(ViewSet):
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
- 
+
+
 class ReceptaViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
         return Response(ReceptaSerializer(Recepta.objects.all(), many=True).data)
- 
+
     def retrieve(self, request, pk=None):
         try:
             recepta = Recepta.objects.get(pk=pk)
         except Recepta.DoesNotExist:
             return Response({'error': 'No trobada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceptaSerializer(recepta).data)
- 
+
+
 class FavoritViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
         qs = Favorit.objects.filter(usuari=request.user).select_related('recepta')
         return Response(FavoritSerializer(qs, many=True).data)
- 
+
     def create(self, request):
-        serializer = FavoritSerializer(data={**request.data, 'usuari': request.user.id})
+        serializer = FavoritSerializer(
+            data={**request.data, 'usuari': request.user.id}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
- 
+
     def destroy(self, request, pk=None):
         try:
             favorit = Favorit.objects.get(pk=pk, usuari=request.user)
@@ -276,9 +324,10 @@ class FavoritViewSet(ViewSet):
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         favorit.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
- 
+
+
 class RecomanacioViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
         return Response()

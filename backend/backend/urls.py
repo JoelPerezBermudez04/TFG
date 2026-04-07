@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from django.contrib import admin
 from myapp.views import *
 
 router = DefaultRouter()
@@ -15,4 +16,5 @@ router.register(r'recomanacions', RecomanacioViewSet, basename='recomanacio')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('admin/', admin.site.urls),
 ]

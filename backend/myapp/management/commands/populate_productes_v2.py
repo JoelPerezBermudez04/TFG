@@ -215,25 +215,25 @@ def traduir_al_catala(text_en):
         return resultat.capitalize() if resultat else text_en.capitalize()
     except Exception:
         return text_en.capitalize()
-
-
+ 
+ 
 def get_emoji(nom_ca, nom_en, categoria_nom):
-    nom_ca_lower = nom_ca.lower()
-    nom_en_lower = nom_en.lower()
     return (
-        EMOJI_MAP.get(nom_ca_lower)
-        or EMOJI_MAP.get(nom_en_lower)
+        EMOJI_MAP.get(nom_ca.lower())
+        or EMOJI_MAP.get(nom_en.lower())
         or CATEGORY_EMOJI.get(categoria_nom, "🛒")
     )
-
-
+ 
+ 
 class Command(BaseCommand):
-    help = 'Pobla la BD amb productes de Spoonacular traduïts al català amb emojis'
-
+    help = 'Pobla la BD amb productes de Spoonacular. Continua des d\'on s\'ha quedat.'
+ 
     def add_arguments(self, parser):
-        parser.add_argument('--api-key', type=str, help='Spoonacular API key')
-        parser.add_argument('--dry-run', action='store_true', help='Sense escriure a la BD')
-
+        parser.add_argument('--api-key', type=str)
+        parser.add_argument('--dry-run', action='store_true')
+        parser.add_argument('--force', action='store_true',
+                            help='Reprocessa totes les categories encara que ja tinguin productes')
+ 
     def handle(self, *args, **options):
         import os
         api_key = options.get('api_key') or os.environ.get('SPOONACULAR_API_KEY')
@@ -242,7 +242,7 @@ class Command(BaseCommand):
                 'Cal una API key. Usa --api-key o defineix SPOONACULAR_API_KEY al .env'
             ))
             return
-
+ 
         try:
             from deep_translator import GoogleTranslator
         except ImportError:
@@ -250,19 +250,32 @@ class Command(BaseCommand):
                 'Instal·la deep-translator: pip install deep-translator'
             ))
             return
-
+ 
         dry_run = options['dry_run']
+        force = options['force']
         total_creats = 0
+        total_saltats = 0
         total_existents = 0
-
+ 
         for categoria_nom, queries in CATEGORIES:
+            # ── Comprova si la categoria ja té productes ──────────────────────
+            categoria_existent = Categoria.objects.filter(nom=categoria_nom).first()
+            if not force and categoria_existent and categoria_existent.producte_set.exists():
+                count = categoria_existent.producte_set.count()
+                self.stdout.write(f'⏭️  {categoria_nom} ({count} productes ja carregats, saltant...)')
+                total_saltats += count
+                continue
+ 
             self.stdout.write(f'\n📂 {categoria_nom}')
-
+ 
             if not dry_run:
-                categoria, _ = Categoria.objects.get_or_create(nom=categoria_nom)
-
+                categoria, _ = Categoria.objects.get_or_create(
+                    nom=categoria_nom,
+                    defaults={'emoji': CATEGORY_EMOJI.get(categoria_nom, "🛒")}
+                )
+ 
             vistos = set()
-
+ 
             for query in queries:
                 try:
                     resp = requests.get(
@@ -277,20 +290,20 @@ class Command(BaseCommand):
                         timeout=10,
                     )
                     resp.raise_for_status()
-
+ 
                     for item in resp.json().get('results', []):
                         nom_en = item['name']
                         spoonacular_id = item['id']
-
+ 
                         if nom_en in vistos:
                             continue
                         vistos.add(nom_en)
-
+ 
                         nom_ca = traduir_al_catala(nom_en)
                         emoji = get_emoji(nom_ca, nom_en, categoria_nom)
-
+ 
                         if dry_run:
-                            self.stdout.write(f'  [DRY] {emoji} {nom_ca} (en: {nom_en}, id: {spoonacular_id})')
+                            self.stdout.write(f'  [DRY] {emoji} {nom_ca}')
                             total_creats += 1
                         else:
                             _, creat = Producte.objects.get_or_create(
@@ -298,7 +311,10 @@ class Command(BaseCommand):
                                 defaults={
                                     'categoria': categoria,
                                     'emoji': emoji,
-                                    'alias_api': {'spoonacular_id': spoonacular_id, 'nom_en': nom_en},
+                                    'alias_api': {
+                                        'spoonacular_id': spoonacular_id,
+                                        'nom_en': nom_en,
+                                    },
                                 }
                             )
                             if creat:
@@ -306,21 +322,29 @@ class Command(BaseCommand):
                                 self.stdout.write(f'  ✓ {emoji} {nom_ca}')
                             else:
                                 total_existents += 1
-
+ 
                     time.sleep(0.5)
-
+ 
                 except requests.exceptions.HTTPError as e:
                     if e.response.status_code == 402:
                         self.stderr.write(self.style.ERROR(
-                            'Límit diari de la API assolit. Torna-ho a intentar demà.'
+                            '\n⚠️  Límit diari de la API assolit.'
+                            '\nTorna a executar l\'script demà — saltarà les categories ja carregades.'
                         ))
-                        self.stdout.write(f'\nResum parcial: {total_creats} creats, {total_existents} ja existien.')
+                        self._resum(total_creats, total_saltats, total_existents)
                         return
                     self.stderr.write(self.style.WARNING(f'  Error HTTP per "{query}": {e}'))
                 except requests.exceptions.RequestException as e:
                     self.stderr.write(self.style.WARNING(f'  Error de xarxa per "{query}": {e}'))
-
+ 
         prefix = '[DRY RUN] ' if dry_run else ''
-        self.stdout.write(self.style.SUCCESS(
-            f'\n{prefix}Fet! {total_creats} productes nous, {total_existents} ja existien.'
-        ))
+        self.stdout.write(self.style.SUCCESS(f'\n{prefix}Fet!'))
+        self._resum(total_creats, total_saltats, total_existents)
+ 
+    def _resum(self, creats, saltats, existents):
+        self.stdout.write(
+            f'  ✓ {creats} productes nous creats\n'
+            f'  ⏭️  {saltats} productes de categories ja carregades (saltats)\n'
+            f'  = {existents} productes duplicats ignorats'
+        )
+ 
