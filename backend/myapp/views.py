@@ -158,6 +158,7 @@ class UsuariViewSet(ViewSet):
 class ProducteViewSet(ViewSet):
 
     def get_permissions(self):
+        # Crear, editar i eliminar: només admins. Llegir: qualsevol autenticat.
         if self.action in {'create', 'update', 'destroy'}:
             return [IsAdminUser()]
         return [IsAuthenticated()]
@@ -222,12 +223,10 @@ class ProducteInventariViewSet(ViewSet):
         return Response(ProducteInventariSerializer(item).data)
 
     def create(self, request):
-        serializer = ProducteInventariSerializer(
-            data={**request.data, 'usuari': request.user.id}
-        )
+        serializer = ProducteInventariSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        serializer.save(usuari=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk=None):
@@ -259,12 +258,10 @@ class ItemCompraViewSet(ViewSet):
         return Response(ItemCompraSerializer(qs, many=True).data)
 
     def create(self, request):
-        serializer = ItemCompraSerializer(
-            data={**request.data, 'usuari': request.user.id}
-        )
+        serializer = ItemCompraSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        serializer.save(usuari=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk=None):
@@ -309,12 +306,10 @@ class FavoritViewSet(ViewSet):
         return Response(FavoritSerializer(qs, many=True).data)
 
     def create(self, request):
-        serializer = FavoritSerializer(
-            data={**request.data, 'usuari': request.user.id}
-        )
+        serializer = FavoritSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        serializer.save(usuari=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk=None):
