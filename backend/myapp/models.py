@@ -21,7 +21,8 @@ class Categoria(models.Model):
 class Producte(models.Model):
     nom = models.CharField(max_length=100, unique=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-    emoji = models.CharField(max_length=10, default='🛒')
+    emoji = models.CharField(max_length=10, default='🛒')#fallback
+    imatge_url = models.URLField(blank=True, null=True)
 
     # id Spoonacular i nom en anglès per fer matching amb receptes
     alias_api = models.JSONField(blank=True, null=True)

@@ -22,7 +22,7 @@ class ProducteCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Producte
-        fields = ['nom', 'categoria', 'emoji', 'alias_api']
+        fields = ['nom', 'categoria', 'emoji', 'imatge_url', 'alias_api']
 
 
 class UsuariSerializer(serializers.ModelSerializer):
