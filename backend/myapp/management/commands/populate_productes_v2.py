@@ -1,5 +1,6 @@
 import time
 import requests
+import os
 from django.core.management.base import BaseCommand
 from myapp.models import Categoria, Producte
 
@@ -228,15 +229,12 @@ def get_emoji(nom_ca, nom_en, categoria_nom):
 
 
 def build_imatge_url(image_filename):
-    """Construeix la URL completa de la imatge de Spoonacular a partir del nom de fitxer."""
     if image_filename:
         return f'{SPOONACULAR_IMG_BASE}{image_filename}'
     return None
 
 
 class Command(BaseCommand):
-    help = 'Pobla la BD amb ingredients de Spoonacular. Continua des d\'on s\'ha quedat.'
-
     def add_arguments(self, parser):
         parser.add_argument('--api-key', type=str)
         parser.add_argument('--dry-run', action='store_true')
@@ -244,7 +242,6 @@ class Command(BaseCommand):
                             help='Reprocessa totes les categories encara que ja tinguin productes')
 
     def handle(self, *args, **options):
-        import os
         api_key = options.get('api_key') or os.environ.get('SPOONACULAR_API_KEY')
         if not api_key:
             self.stderr.write(self.style.ERROR(
@@ -267,7 +264,7 @@ class Command(BaseCommand):
         total_existents = 0
 
         for categoria_nom, queries in CATEGORIES:
-            # ── Comprova si la categoria ja té productes ──────────────────────
+            # Comprova si la categoria ja té productes
             categoria_existent = Categoria.objects.filter(nom=categoria_nom).first()
             if not force and categoria_existent and categoria_existent.producte_set.exists():
                 count = categoria_existent.producte_set.count()
@@ -275,7 +272,7 @@ class Command(BaseCommand):
                 total_saltats += count
                 continue
 
-            self.stdout.write(f'\n📂 {categoria_nom}')
+            self.stdout.write(f'\n {categoria_nom}')
 
             if not dry_run:
                 categoria, _ = Categoria.objects.get_or_create(
@@ -303,7 +300,6 @@ class Command(BaseCommand):
                     for item in resp.json().get('results', []):
                         nom_en = item['name']
                         spoonacular_id = item['id']
-                        # El camp 'image' conté el nom de fitxer (ex: "apple.jpg")
                         image_filename = item.get('image')
                         imatge_url = build_imatge_url(image_filename)
 
@@ -344,7 +340,7 @@ class Command(BaseCommand):
                 except requests.exceptions.HTTPError as e:
                     if e.response.status_code == 402:
                         self.stderr.write(self.style.ERROR(
-                            '\n⚠️  Límit diari de la API assolit.'
+                            '\n Límit diari de la API assolit.'
                             '\nTorna a executar l\'script demà — saltarà les categories ja carregades.'
                         ))
                         self._resum(total_creats, total_saltats, total_existents)

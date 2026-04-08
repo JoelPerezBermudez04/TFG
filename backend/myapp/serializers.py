@@ -18,8 +18,6 @@ class ProducteSerializer(serializers.ModelSerializer):
 
 
 class ProducteCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer per crear i editar productes (només admins)."""
-
     class Meta:
         model = Producte
         fields = ['nom', 'categoria', 'emoji', 'imatge_url', 'alias_api']

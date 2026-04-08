@@ -253,7 +253,7 @@ class ProducteInventariViewSet(ViewSet):
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
-        # Usem el serializer restringit: l'usuari només pot tocar quantitat, unitat i data_caducitat
+        # Usem el serializer restringit
         serializer = ProducteInventariEditSerializer(item, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

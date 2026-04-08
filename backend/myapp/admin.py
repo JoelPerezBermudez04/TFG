@@ -5,9 +5,6 @@ from .models import (
     Recepta, IngredientRecepta, Favorit, ItemCompra
 )
 
-
-# ── Inlines ────────────────────────────────────────────────────────────────────
-
 class ProducteCategoriaInline(admin.TabularInline):
     """Productes dins d'una categoria."""
     model = Producte
@@ -47,8 +44,6 @@ class ItemCompraInline(admin.TabularInline):
     extra = 0
     autocomplete_fields = ['producte']
 
-
-# ── ModelAdmins ────────────────────────────────────────────────────────────────
 
 @admin.register(Usuari)
 class UsuariAdmin(UserAdmin):

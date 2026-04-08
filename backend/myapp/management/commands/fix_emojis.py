@@ -1,12 +1,7 @@
-"""
-Script de correcció d'emojis — dues funcions:
-1. get_emoji_intel·ligent(): usada al populate per als nous productes
-2. Command fix_emojis: corregeix els productes ja existents a la BD
-"""
+from django.core.management.base import BaseCommand
+from myapp.models import Producte
 
-# ── Mapping base (nom -> emoji) ───────────────────────────────────────────────
-# L'ORDRE IMPORTA: posar primer els noms més llargs/específics
-# perquè "tomàquet cherry" no es confongui amb "cherry"
+
 EMOJI_MAP = {
     # Verdures
     "blat de moro": "🌽",
@@ -157,40 +152,23 @@ CATEGORY_EMOJI = {
 
 
 def get_emoji_intelligent(nom_ca, nom_en, categoria_nom):
-    """
-    Estratègia en tres passos:
-    1. Coincidència exacta al mapa
-    2. Cerca si el nom CONTÉ algun producte base conegut (el més llarg primer)
-    3. Fallback: emoji de la categoria
-    """
     nom_ca_l = nom_ca.lower()
     nom_en_l = nom_en.lower() if nom_en else ""
 
-    # Pas 1: coincidència exacta
     if nom_ca_l in EMOJI_MAP:
         return EMOJI_MAP[nom_ca_l]
     if nom_en_l in EMOJI_MAP:
         return EMOJI_MAP[nom_en_l]
 
-    # Pas 2: cerca per contingut — ordre de llarg a curt per evitar falsos positius
     claus_ordenades = sorted(EMOJI_MAP.keys(), key=len, reverse=True)
     for clau in claus_ordenades:
         if clau in nom_ca_l or (nom_en_l and clau in nom_en_l):
             return EMOJI_MAP[clau]
 
-    # Pas 3: fallback categoria
     return CATEGORY_EMOJI.get(categoria_nom, "🛒")
 
 
-# ── Management command per corregir els ja existents ─────────────────────────
-
-from django.core.management.base import BaseCommand
-from myapp.models import Producte
-
-
 class Command(BaseCommand):
-    help = 'Corregeix els emojis dels productes ja existents a la BD'
-
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true',
                             help='Mostra els canvis sense aplicar-los')

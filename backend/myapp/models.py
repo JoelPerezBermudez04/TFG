@@ -24,7 +24,7 @@ class Producte(models.Model):
     emoji = models.CharField(max_length=10, default='🛒')#fallback
     imatge_url = models.URLField(blank=True, null=True)
 
-    # id Spoonacular i nom en anglès per fer matching amb receptes
+    # id Spoonacular, nom imatge i nom en anglès per fer matching amb receptes
     alias_api = models.JSONField(blank=True, null=True)
 
     def __str__(self):
