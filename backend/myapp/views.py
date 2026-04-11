@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
+from django.utils import timezone
 from .models import *
 from .serializers import *
 
@@ -267,6 +268,20 @@ class ProducteInventariViewSet(ViewSet):
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['get'], url_path='caducitats')
+    def caducitats(self, request):
+        dies = request.user.dies_avis_caducitat
+        if dies == 0:
+            return Response([])
+        limit = timezone.now().date() + timezone.timedelta(days=dies)
+        qs = (
+            ProducteInventari.objects
+            .filter(usuari=request.user, data_caducitat__isnull=False, data_caducitat__lte=limit)
+            .select_related('producte')
+            .order_by('data_caducitat')
+        )
+        return Response(ProducteInventariSerializer(qs, many=True).data)
 
 
 class ItemCompraViewSet(ViewSet):

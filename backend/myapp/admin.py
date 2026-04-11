@@ -47,11 +47,11 @@ class ItemCompraInline(admin.TabularInline):
 
 @admin.register(Usuari)
 class UsuariAdmin(UserAdmin):
-    list_display = ['username', 'email', 'provider', 'is_staff', 'is_active']
+    list_display = ['username', 'email', 'provider', 'dies_avis_caducitat', 'is_staff', 'is_active']
     list_filter = ['provider', 'is_staff', 'is_active']
     search_fields = ['username', 'email']
     fieldsets = UserAdmin.fieldsets + (
-        ('Informació addicional', {'fields': ('provider',)}),
+        ('Informació addicional', {'fields': ('provider', 'dies_avis_caducitat')}),
     )
     inlines = [ProducteInventariInline, FavoritInline, ItemCompraInline]
 
