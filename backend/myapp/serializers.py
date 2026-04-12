@@ -69,11 +69,18 @@ class EditarUsuariSerializer(serializers.ModelSerializer):
 
 class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source='producte.nom', read_only=True)
-
+    caducat = serializers.SerializerMethodField()
+ 
     class Meta:
         model = ProducteInventari
         fields = '__all__'
         read_only_fields = ['usuari', 'data_afegit']
+ 
+    def get_caducat(self, obj):
+        if obj.data_caducitat is None:
+            return False
+        from django.utils import timezone
+        return obj.data_caducitat < timezone.now().date()
 
 
 class ProducteInventariEditSerializer(serializers.ModelSerializer):

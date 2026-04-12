@@ -272,15 +272,22 @@ class ProducteInventariViewSet(ViewSet):
     @action(detail=False, methods=['get'], url_path='caducitats')
     def caducitats(self, request):
         dies = request.user.dies_avis_caducitat
+        avui = timezone.now().date()
         if dies == 0:
-            return Response([])
-        limit = timezone.now().date() + timezone.timedelta(days=dies)
-        qs = (
-            ProducteInventari.objects
-            .filter(usuari=request.user, data_caducitat__isnull=False, data_caducitat__lte=limit)
-            .select_related('producte')
-            .order_by('data_caducitat')
-        )
+            qs = (
+                ProducteInventari.objects
+                .filter(usuari=request.user, data_caducitat__isnull=False, data_caducitat__lt=avui)
+                .select_related('producte')
+                .order_by('data_caducitat')
+            )
+        else:
+            limit = avui + timezone.timedelta(days=dies)
+            qs = (
+                ProducteInventari.objects
+                .filter(usuari=request.user, data_caducitat__isnull=False, data_caducitat__lte=limit)
+                .select_related('producte')
+                .order_by('data_caducitat')
+            )
         return Response(ProducteInventariSerializer(qs, many=True).data)
 
 
