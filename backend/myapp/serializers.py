@@ -26,7 +26,7 @@ class ProducteCreateUpdateSerializer(serializers.ModelSerializer):
 class UsuariSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuari
-        fields = ['id', 'username', 'email', 'provider']
+        fields = ['id', 'username', 'email', 'provider', 'dies_avis_caducitat']
 
 
 class RegistreSerializer(serializers.ModelSerializer):
@@ -47,7 +47,12 @@ class RegistreSerializer(serializers.ModelSerializer):
 class EditarUsuariSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuari
-        fields = ['username', 'email']
+        fields = ['username', 'email', 'dies_avis_caducitat']
+
+    def validate_dies_avis_caducitat(self, value):
+        if value < 0:
+            raise serializers.ValidationError('El valor no pot ser negatiu.')
+        return value
 
     def validate_username(self, value):
         user = self.instance
@@ -64,11 +69,18 @@ class EditarUsuariSerializer(serializers.ModelSerializer):
 
 class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source='producte.nom', read_only=True)
-
+    caducat = serializers.SerializerMethodField()
+ 
     class Meta:
         model = ProducteInventari
         fields = '__all__'
         read_only_fields = ['usuari', 'data_afegit']
+ 
+    def get_caducat(self, obj):
+        if obj.data_caducitat is None:
+            return False
+        from django.utils import timezone
+        return obj.data_caducitat < timezone.now().date()
 
 
 class ProducteInventariEditSerializer(serializers.ModelSerializer):

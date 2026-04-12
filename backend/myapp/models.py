@@ -8,6 +8,7 @@ class Usuari(AbstractUser):
         ('GOOGLE', 'Google'),
     ]
     provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='LOCAL')
+    dies_avis_caducitat = models.IntegerField(default=5) # 0 = notificacions de caducitat desactivades
 
 
 class Categoria(models.Model):
