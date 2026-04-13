@@ -1,3 +1,5 @@
+import google.auth.transport.requests
+from google.oauth2 import id_token as google_id_token
 from rest_framework.viewsets import ViewSet
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -7,6 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.conf import settings
 from .models import *
 from .serializers import *
 
@@ -18,6 +21,13 @@ def get_tokens(user):
         'access':  str(refresh.access_token),
     }
 
+def _unique_username(base: str) -> str:
+    username = base
+    i = 1
+    while Usuari.objects.filter(username=username).exists():
+        username = f"{base}{i}"
+        i += 1
+    return username
 
 class UsuariViewSet(ViewSet):
 
@@ -119,6 +129,11 @@ class UsuariViewSet(ViewSet):
     @action(detail=False, methods=['post'], url_path='canviar-password')
     def canviar_password(self, request):
         user = request.user
+        if user.provider == 'GOOGLE':
+            return Response(
+                {'error': 'Els usuaris de Google no poden canviar la contrasenya.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         password_actual = request.data.get('password_actual')
         password_nou    = request.data.get('password_nou')
         if not password_actual or not password_nou:
@@ -146,14 +161,72 @@ class UsuariViewSet(ViewSet):
     @action(detail=False, methods=['delete'], url_path='eliminar')
     def eliminar(self, request):
         user = request.user
-        password = request.data.get('password')
-        if password and not user.check_password(password):
-            return Response(
-                {'error': 'Contrasenya incorrecta.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if user.provider == 'LOCAL':
+            password = request.data.get('password')
+            if not password:
+                return Response(
+                    {'error': 'Cal proporcionar la contrasenya.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if not user.check_password(password):
+                return Response(
+                    {'error': 'Contrasenya incorrecta.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GoogleAuthViewSet(ViewSet):
+    permission_classes = [AllowAny]
+
+    @action(detail=False, methods=['post'], url_path='google')
+    def google_login(self, request):
+        token = request.data.get('id_token')
+        if not token:
+            return Response(
+                {'error': 'Cal proporcionar id_token.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            info = google_id_token.verify_oauth2_token(
+                token,
+                google.auth.transport.requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+            )
+        except ValueError:
+            return Response(
+                {'error': 'Token de Google invàlid o caducat.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        email = info.get('email')
+        if not email:
+            return Response(
+                {'error': 'No s\'ha pogut obtenir l\'email de Google.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        username_base = email.split('@')[0]
+
+        user, created = Usuari.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': _unique_username(username_base),
+                'provider': 'GOOGLE',
+            }
+        )
+
+        if not created and user.provider == 'LOCAL':
+            return Response(
+                {'error': 'Aquest email ja està registrat amb contrasenya. Usa el login manual.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        return Response(
+            {'usuari': UsuariSerializer(user).data, 'tokens': get_tokens(user)},
+            status=status.HTTP_200_OK
+        )
 
 
 class ProducteViewSet(ViewSet):

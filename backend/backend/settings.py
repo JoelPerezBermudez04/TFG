@@ -100,6 +100,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

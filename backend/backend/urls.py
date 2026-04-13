@@ -13,6 +13,7 @@ router.register(r'compra', ItemCompraViewSet, basename='compra')
 router.register(r'receptes', ReceptaViewSet, basename='recepta')
 router.register(r'favorits', FavoritViewSet, basename='favorit')
 router.register(r'recomanacions', RecomanacioViewSet, basename='recomanacio')
+router.register(r'auth', GoogleAuthViewSet, basename='auth')
 
 urlpatterns = [
     path('', include(router.urls)),
