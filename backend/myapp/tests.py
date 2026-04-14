@@ -182,3 +182,66 @@ class EliminarUsuariTests(APITestCase):
         client = auth_client(user)
         resp = client.delete('/usuaris/eliminar/', {'password': 'wrong'}, format='json') #NOSONAR
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ProducteTests(APITestCase):
+    def setUp(self):
+        self.categoria = Categoria.objects.create(nom='Fruites', emoji='🍎')
+        self.admin = crear_usuari('admin', is_staff=True)
+        self.user = crear_usuari('normal')
+        self.admin_client = auth_client(self.admin)
+        self.user_client = auth_client(self.user)
+ 
+    def test_llistar_productes_autenticat(self):
+        resp = self.user_client.get('/productes/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+ 
+    def test_llistar_productes_no_autenticat(self):
+        resp = APIClient().get('/productes/')
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+ 
+    def test_crear_producte_admin(self):
+        resp = self.admin_client.post('/productes/', {
+            'nom': 'Poma',
+            'categoria': self.categoria.pk,
+            'emoji': '🍎',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+ 
+    def test_crear_producte_user_normal_rebutjat(self):
+        resp = self.user_client.post('/productes/', {
+            'nom': 'Pera',
+            'categoria': self.categoria.pk,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+ 
+    def test_eliminar_producte_admin(self):
+        producte = Producte.objects.create(nom='Prova', categoria=self.categoria)
+        resp = self.admin_client.delete(f'/productes/{producte.pk}/')
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+ 
+    def test_eliminar_producte_user_normal_rebutjat(self):
+        producte = Producte.objects.create(nom='Prova2', categoria=self.categoria)
+        resp = self.user_client.delete(f'/productes/{producte.pk}/')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+ 
+    def test_cerca_producte(self):
+        Producte.objects.create(nom='Taronja', categoria=self.categoria, alias_api={'nom_en': 'orange'})
+        resp = self.user_client.get('/productes/?cerca=taronja')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+
+class CategoriaTests(APITestCase):
+    def setUp(self):
+        self.user = crear_usuari()
+        self.client = auth_client(self.user)
+        Categoria.objects.create(nom='Verdures', emoji='🥦')
+ 
+    def test_llistar_categories(self):
+        resp = self.client.get('/categories/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(resp.data), 1)
+ 
+    def test_categories_no_autenticat(self):
+        resp = APIClient().get('/categories/')
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
