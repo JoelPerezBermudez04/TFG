@@ -375,3 +375,65 @@ class CaducitatsTests(APITestCase):
         resp = self.client.get('/inventari/caducitats/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data), 3)
+
+
+class ItemCompraTests(APITestCase):
+    def setUp(self):
+        self.categoria = Categoria.objects.create(nom='Begudes', emoji='🥤')
+        self.producte = Producte.objects.create(nom='Aigua', categoria=self.categoria)
+        self.user = crear_usuari('compra_user')
+        self.altre_user = crear_usuari('compra_user2')
+        self.client = auth_client(self.user)
+        self.altre_client = auth_client(self.altre_user)
+ 
+    def test_crear_item_compra(self):
+        resp = self.client.post('/compra/', {
+            'producte': self.producte.pk,
+            'quantitat': 6,
+            'unitat': 'unitats',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(resp.data['comprat'])
+ 
+    def test_marcar_item_com_comprat_patch(self):
+        item = ItemCompra.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='unitat'
+        )
+        resp = self.client.patch(f'/compra/{item.pk}/', {'comprat': True}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data['comprat'])
+ 
+    def test_actualitzar_item_compra_put(self):
+        item = ItemCompra.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='unitat'
+        )
+        resp = self.client.put(f'/compra/{item.pk}/', {
+            'producte': self.producte.pk,
+            'quantitat': 3,
+            'unitat': 'unitats',
+            'comprat': True,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(float(resp.data['quantitat']), 3.0)
+        self.assertTrue(resp.data['comprat'])
+ 
+    def test_aislament_llista_compra(self):
+        ItemCompra.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='unitat'
+        )
+        resp = self.altre_client.get('/compra/')
+        self.assertEqual(len(resp.data), 0)
+ 
+    def test_eliminar_item_compra(self):
+        item = ItemCompra.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='unitat'
+        )
+        resp = self.client.delete(f'/compra/{item.pk}/')
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+ 
+    def test_eliminar_item_altre_usuari_rebutjat(self):
+        item = ItemCompra.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='unitat'
+        )
+        resp = self.altre_client.delete(f'/compra/{item.pk}/')
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
