@@ -1,0 +1,20 @@
+# Django core
+Django==4.2.21
+djangorestframework==3.15.2
+django-cors-headers==4.7.0
+asgiref==3.8.1
+sqlparse==0.5.3
+
+# JWT
+djangorestframework_simplejwt==5.5.0
+PyJWT==2.9.0
+
+# Database
+psycopg2-binary==2.9.11
+
+# Environment variables
+python-dotenv==1.0.1
+
+# Fuzzy search
+thefuzz==0.22.1
+RapidFuzz==3.14.1
