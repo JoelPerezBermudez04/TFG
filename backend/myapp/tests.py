@@ -326,3 +326,52 @@ class InventariTests(APITestCase):
         )
         resp = self.client.get(f'/inventari/{item.pk}/')
         self.assertFalse(resp.data['caducat'])
+
+
+class CaducitatsTests(APITestCase):
+ 
+    def setUp(self):
+        self.categoria = Categoria.objects.create(nom='Carns', emoji='🥩')
+        self.user = crear_usuari('caducat_user')
+        self.client = auth_client(self.user)
+        avui = date.today()
+
+        self.p1 = Producte.objects.create(nom='Pollastre', categoria=self.categoria)
+        self.p2 = Producte.objects.create(nom='Vedella', categoria=self.categoria)
+        self.p3 = Producte.objects.create(nom='Porc', categoria=self.categoria)
+        
+        ProducteInventari.objects.create(
+            usuari=self.user, producte=self.p1, quantitat=1, unitat='kg',
+            data_caducitat=avui - timedelta(days=1)
+        )
+        
+        ProducteInventari.objects.create(
+            usuari=self.user, producte=self.p2, quantitat=1, unitat='kg',
+            data_caducitat=avui + timedelta(days=1)
+        )
+        
+        ProducteInventari.objects.create(
+            usuari=self.user, producte=self.p3, quantitat=1, unitat='kg',
+            data_caducitat=avui + timedelta(days=30)
+        )
+ 
+    def test_caducitats_dies_0_nomes_caducats(self):
+        self.user.dies_avis_caducitat = 0
+        self.user.save()
+        resp = self.client.get('/inventari/caducitats/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 1)
+ 
+    def test_caducitats_dies_5(self):
+        self.user.dies_avis_caducitat = 5
+        self.user.save()
+        resp = self.client.get('/inventari/caducitats/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 2)
+ 
+    def test_caducitats_dies_31(self):
+        self.user.dies_avis_caducitat = 31
+        self.user.save()
+        resp = self.client.get('/inventari/caducitats/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 3)
