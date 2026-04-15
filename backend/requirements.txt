@@ -21,3 +21,4 @@ RapidFuzz==3.14.1
 
 
 gunicorn==23.0.0
+whitenoise==6.12.0
