@@ -245,3 +245,84 @@ class CategoriaTests(APITestCase):
     def test_categories_no_autenticat(self):
         resp = APIClient().get('/categories/')
         self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class InventariTests(APITestCase):
+ 
+    def setUp(self):
+        self.categoria = Categoria.objects.create(nom='Làctics', emoji='🥛')
+        self.producte = Producte.objects.create(nom='Llet', categoria=self.categoria)
+        self.user = crear_usuari('user1')
+        self.altre_user = crear_usuari('user2')
+        self.client = auth_client(self.user)
+        self.altre_client = auth_client(self.altre_user)
+ 
+    def test_crear_item_inventari(self):
+        resp = self.client.post('/inventari/', {
+            'producte': self.producte.pk,
+            'quantitat': 2.0,
+            'unitat': 'L',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+ 
+    def test_llistar_inventari_propi(self):
+        ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.client.get('/inventari/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 1)
+ 
+    def test_aislament_entre_usuaris(self):
+        ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.altre_client.get('/inventari/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp.data), 0)
+ 
+    def test_editar_item_inventari_patch(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.client.patch(f'/inventari/{item.pk}/', {'quantitat': 3.0}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(float(resp.data['quantitat']), 3.0)
+ 
+    def test_editar_item_inventari_put(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.client.put(f'/inventari/{item.pk}/', {'quantitat': 5.0, 'unitat': 'kg'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(float(resp.data['quantitat']), 5.0)
+ 
+    def test_editar_item_altre_usuari_rebutjat(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.altre_client.patch(f'/inventari/{item.pk}/', {'quantitat': 99}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+ 
+    def test_eliminar_item_inventari(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L'
+        )
+        resp = self.client.delete(f'/inventari/{item.pk}/')
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+ 
+    def test_camp_caducat_true(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L',
+            data_caducitat=date.today() - timedelta(days=1)
+        )
+        resp = self.client.get(f'/inventari/{item.pk}/')
+        self.assertTrue(resp.data['caducat'])
+ 
+    def test_camp_caducat_false(self):
+        item = ProducteInventari.objects.create(
+            usuari=self.user, producte=self.producte, quantitat=1, unitat='L',
+            data_caducitat=date.today() + timedelta(days=5)
+        )
+        resp = self.client.get(f'/inventari/{item.pk}/')
+        self.assertFalse(resp.data['caducat'])
