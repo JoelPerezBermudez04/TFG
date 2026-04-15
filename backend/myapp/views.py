@@ -254,7 +254,17 @@ class ProducteInventariViewSet(ViewSet):
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
-        # Usem el serializer restringit
+        serializer = ProducteInventariEditSerializer(item, data=request.data, partial=False)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(ProducteInventariSerializer(item).data)
+
+    def partial_update(self, request, pk=None):
+        try:
+            item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
+        except ProducteInventari.DoesNotExist:
+            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProducteInventariEditSerializer(item, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -306,6 +316,17 @@ class ItemCompraViewSet(ViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, pk=None):
+        try:
+            item = ItemCompra.objects.get(pk=pk, usuari=request.user)
+        except ItemCompra.DoesNotExist:
+            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ItemCompraSerializer(item, data=request.data, partial=False)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data)
+
+    def partial_update(self, request, pk=None):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
         except ItemCompra.DoesNotExist:
