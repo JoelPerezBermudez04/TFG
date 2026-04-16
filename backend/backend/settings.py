@@ -111,7 +111,7 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'localhost'
+        'HOST': 'localhost',#'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'localhost'
         'PORT': '5432',
     }
 }
