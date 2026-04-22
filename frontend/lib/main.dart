@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/providers/auth_provider.dart';
+import 'features/auth/screens/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,62 +13,40 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData.from(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'My App',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const AuthWrapper(),
       ),
-      home: const MyHomePage(title: 'Flutter + Django Demo'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  String message = "Carregant...";
-
-  @override
-  void initState() {
-    super.initState();
-    fetchMessage();
-  }
-
-  fetchMessage() async {
-    try {
-      // ⚠️ CANVIA AQUÍ LA IP pel teu PC
-      final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          message = data['message'];
-        });
-      } else {
-        setState(() {
-          message = "Error: ${response.statusCode}";
-        });
-      }
-    } catch (e) {
-      setState(() {
-        message = "Error: $e";
-      });
-    }
-  }
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: Center(
-        child: Text(message, style: const TextStyle(fontSize: 24)),
-      ),
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        switch (auth.status) {
+          case AuthStatus.checking:
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          case AuthStatus.authenticated:
+            return const Scaffold(
+              body: Center(child: Text('✅ Autenticat!')),
+            );
+          case AuthStatus.unauthenticated:
+            return const LoginScreen();
+        }
+      },
     );
   }
 }
