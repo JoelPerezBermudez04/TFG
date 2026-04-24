@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/config/api_config.dart';
@@ -36,17 +37,19 @@ class AuthProvider with ChangeNotifier {
 
   String _parseError(Map<String, dynamic>? body, String fallback) {
     if (body == null) return fallback;
-
     if (body['error'] is String) return body['error'];
     if (body['detail'] is String) return body['detail'];
-
     for (final key in body.keys) {
       final value = body[key];
       if (value is List && value.isNotEmpty) return value.first.toString();
       if (value is String) return value;
     }
-
     return fallback;
+  }
+
+  String _connectionError(Object e) {
+    if (e is TimeoutException) return 'El servidor no respon. Torna-ho a intentar.';
+    return 'Error de connexió. Comprova la teva xarxa.';
   }
 
   Future<bool> login(String username, String password) async {
@@ -77,8 +80,8 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (_) {
-      _error = 'Error de connexió. Comprova la teva xarxa.';
+    } catch (e) {
+      _error = _connectionError(e);
       _isSubmitting = false;
       notifyListeners();
       return false;
@@ -114,8 +117,8 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (_) {
-      _error = 'Error de connexió. Comprova la teva xarxa.';
+    } catch (e) {
+      _error = _connectionError(e);
       _isSubmitting = false;
       notifyListeners();
       return false;
@@ -129,7 +132,6 @@ class AuthProvider with ChangeNotifier {
         _user = User.fromJson(response['body']);
         _status = AuthStatus.authenticated;
       } else {
-        // Token invàlid o expirat sense possibilitat de refresh
         await _clearSession();
       }
     } catch (_) {
@@ -162,24 +164,83 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
-    } catch (_) {
-      _error = 'Error de connexió. Comprova la teva xarxa.';
+    } catch (e) {
+      _error = _connectionError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isSubmitting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _api.post(ApiConfig.changePassword, {
+        'password_actual': currentPassword,
+        'password_nou': newPassword,
+      });
+
+      if (response['statusCode'] == 200) {
+        _isSubmitting = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = _parseError(response['body'], 'Error en canviar la contrasenya');
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = _connectionError(e);
+      _isSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteAccount({required String password}) async {
+    _isSubmitting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _api.delete(
+        ApiConfig.deleteAccount,
+        data: {'password': password},
+      );
+
+      if (response['statusCode'] == 204 || response['statusCode'] == 200) {
+        await _clearSession();
+        _isSubmitting = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = _parseError(response['body'], 'Error en eliminar el compte');
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = _connectionError(e);
+      _isSubmitting = false;
       notifyListeners();
       return false;
     }
   }
 
   Future<void> logout() async {
-    
     if (_api.hasTokens) {
       try {
         final refresh = _api.refreshToken;
         if (refresh != null) {
           await _api.post(ApiConfig.logout, {'refresh': refresh});
         }
-      } catch (_) {
-        // Ignorar errors de logout (p. ex. token ja invalidat)
-      }
+      } catch (_) {}
     }
     await _clearSession();
     notifyListeners();

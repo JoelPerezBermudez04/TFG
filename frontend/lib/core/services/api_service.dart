@@ -8,6 +8,8 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
+  static const _timeout = Duration(seconds: 15);
+
   final _storage = const FlutterSecureStorage();
   String? _accessToken;
   String? _refreshToken;
@@ -40,13 +42,14 @@ class ApiService {
 
   Future<bool> _tryRefresh() async {
     if (_refreshToken == null) return false;
-
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.refreshToken}'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refresh': _refreshToken}),
-      );
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiConfig.refreshToken}'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refresh': _refreshToken}),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -57,20 +60,19 @@ class ApiService {
         return true;
       }
     } catch (_) {}
-
     return false;
   }
 
-  Future<http.Response> _execute(Future<http.Response> Function(Map<String, String> headers) request) async {
+  Future<http.Response> _execute(
+    Future<http.Response> Function(Map<String, String> headers) request,
+  ) async {
     var response = await request(_headers);
-
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         response = await request(_headers);
       }
     }
-
     return response;
   }
 
@@ -83,7 +85,9 @@ class ApiService {
 
   Future<Map<String, dynamic>> get(String endpoint) async {
     final response = await _execute(
-      (headers) => http.get(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers),
+      (headers) => http
+          .get(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers)
+          .timeout(_timeout),
     );
     return _parseResponse(response);
   }
@@ -91,11 +95,9 @@ class ApiService {
   Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data) async {
     final body = jsonEncode(data);
     final response = await _execute(
-      (headers) => http.post(
-        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-        headers: headers,
-        body: body,
-      ),
+      (headers) => http
+          .post(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers, body: body)
+          .timeout(_timeout),
     );
     return _parseResponse(response);
   }
@@ -103,11 +105,9 @@ class ApiService {
   Future<Map<String, dynamic>> patch(String endpoint, Map<String, dynamic> data) async {
     final body = jsonEncode(data);
     final response = await _execute(
-      (headers) => http.patch(
-        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-        headers: headers,
-        body: body,
-      ),
+      (headers) => http
+          .patch(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers, body: body)
+          .timeout(_timeout),
     );
     return _parseResponse(response);
   }
@@ -115,11 +115,9 @@ class ApiService {
   Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data) async {
     final body = jsonEncode(data);
     final response = await _execute(
-      (headers) => http.put(
-        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-        headers: headers,
-        body: body,
-      ),
+      (headers) => http
+          .put(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers, body: body)
+          .timeout(_timeout),
     );
     return _parseResponse(response);
   }
@@ -127,11 +125,9 @@ class ApiService {
   Future<Map<String, dynamic>> delete(String endpoint, {Map<String, dynamic>? data}) async {
     final body = data != null ? jsonEncode(data) : null;
     final response = await _execute(
-      (headers) => http.delete(
-        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-        headers: headers,
-        body: body,
-      ),
+      (headers) => http
+          .delete(Uri.parse('${ApiConfig.baseUrl}$endpoint'), headers: headers, body: body)
+          .timeout(_timeout),
     );
     return _parseResponse(response);
   }

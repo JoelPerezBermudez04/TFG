@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/home/screens/main_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -40,9 +41,7 @@ class AuthWrapper extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           case AuthStatus.authenticated:
-            return const Scaffold(
-              body: Center(child: Text('✅ Autenticat!')),
-            );
+            return const MainScreen();
           case AuthStatus.unauthenticated:
             return const LoginScreen();
         }
