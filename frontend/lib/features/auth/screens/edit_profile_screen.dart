@@ -14,6 +14,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _usernameController;
   late TextEditingController _emailController;
+  late bool _isGoogle;
 
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -23,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = context.read<AuthProvider>().user;
     _usernameController = TextEditingController(text: user?.username ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    _isGoogle = user?.provider == 'GOOGLE';
   }
 
   @override
@@ -38,24 +40,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final auth = context.read<AuthProvider>();
     final success = await auth.updateProfile(
       username: _usernameController.text.trim(),
-      email: _emailController.text.trim(),
+      email: _isGoogle ? null : _emailController.text.trim(),
     );
 
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Perfil actualitzat correctament'),
-            backgroundColor: AppColors.success,
-          ),
+          const SnackBar(content: Text('Perfil actualitzat correctament'), backgroundColor: AppColors.success),
         );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(auth.error ?? 'Error en actualitzar el perfil'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text(auth.error ?? 'Error en actualitzar el perfil'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -80,37 +76,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     labelText: 'Usuari',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
-                  textInputAction: TextInputAction.next,
+                  textInputAction: _isGoogle ? TextInputAction.done : TextInputAction.next,
+                  onFieldSubmitted: _isGoogle ? (_) => _handleSave() : null,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return "Introdueix un nom d'usuari";
-                    }
-                    if (value.trim().length < 3) {
-                      return "L'usuari ha de tenir mínim 3 caràcters";
-                    }
+                    if (value == null || value.trim().isEmpty) return "Introdueix un nom d'usuari";
+                    if (value.trim().length < 3) return "L'usuari ha de tenir mínim 3 caràcters";
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
+                if (!_isGoogle) ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _handleSave(),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return 'Introdueix el teu email';
+                      if (!_emailRegex.hasMatch(value.trim())) return 'Introdueix un email vàlid';
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _handleSave(),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Introdueix el teu email';
-                    }
-                    if (!_emailRegex.hasMatch(value.trim())) {
-                      return 'Introdueix un email vàlid';
-                    }
-                    return null;
-                  },
-                ),
+                ],
+                if (_isGoogle) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: AppColors.textMuted),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          "L'email el gestiona Google i no es pot canviar aquí.",
+                          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 32),
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
@@ -120,10 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text('Guardar canvis'),
                     );

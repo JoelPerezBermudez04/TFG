@@ -150,12 +150,12 @@ class UsuariViewSet(ViewSet):
     def eliminar(self, request):
         user = request.user
         password = request.data.get('password')
-        if not password:
+        if not password and user.provider == 'LOCAL':
             return Response(
                 {'error': 'Cal proporcionar la contrasenya per eliminar el compte.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        if not user.check_password(password):
+        if password and not user.check_password(password):
             return Response(
                 {'error': 'Contrasenya incorrecta.'},
                 status=status.HTTP_400_BAD_REQUEST
