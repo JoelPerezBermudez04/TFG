@@ -5,6 +5,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from .models import *
@@ -28,7 +31,7 @@ class UsuariViewSet(ViewSet):
         return Response()
 
     def get_permissions(self):
-        public = {'registre', 'login', 'refresh_token'}
+        public = {'registre', 'login', 'refresh_token', 'google_login'}
         if self.action in public:
             return [AllowAny()]
         return [IsAuthenticated()]
@@ -147,6 +150,11 @@ class UsuariViewSet(ViewSet):
     def eliminar(self, request):
         user = request.user
         password = request.data.get('password')
+        if not password and user.provider == 'LOCAL':
+            return Response(
+                {'error': 'Cal proporcionar la contrasenya per eliminar el compte.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         if password and not user.check_password(password):
             return Response(
                 {'error': 'Contrasenya incorrecta.'},
@@ -154,6 +162,55 @@ class UsuariViewSet(ViewSet):
             )
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+    @action(detail=False, methods=['post'], url_path='google')
+    def google_login(self, request):
+        id_token_str = request.data.get('id_token')
+        if not id_token_str:
+            return Response(
+                {'error': 'Cal proporcionar el id_token de Google.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                id_token_str,
+                google_requests.Request(),
+                settings.GOOGLE_WEB_CLIENT_ID,
+            )
+        except ValueError:
+            return Response(
+                {'error': 'Token de Google invàlid o caducat.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        google_id = idinfo['sub']
+        email = idinfo.get('email', '')
+        username_base = email.split('@')[0] if email else f'user_{google_id[:8]}'
+        user, created = Usuari.objects.get_or_create(
+            email=email,
+            defaults={
+                'username': _unique_username(username_base),
+                'provider': 'GOOGLE',
+            }
+        )
+        if not created and user.provider == 'LOCAL':
+            return Response(
+                {'error': 'Aquest email ja està registrat amb contrasenya. Inicia sessió normalment.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {'usuari': UsuariSerializer(user).data, 'tokens': get_tokens(user)},
+            status=status.HTTP_200_OK
+        )
+
+
+def _unique_username(base):
+    username = base
+    counter = 1
+    while Usuari.objects.filter(username=username).exists():
+        username = f'{base}{counter}'
+        counter += 1
+    return username
 
 
 class ProducteViewSet(ViewSet):

@@ -33,6 +33,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
+GOOGLE_WEB_CLIENT_ID = os.environ.get('GOOGLE_WEB_CLIENT_ID')
+GOOGLE_ANDROID_CLIENT_ID = os.environ.get('GOOGLE_ANDROID_CLIENT_ID')
+
 
 # Application definition
 
@@ -111,7 +114,7 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'localhost',#'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'localhost'
+        'HOST': 'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',#'localhost'
         'PORT': '5432',
     }
 }
