@@ -19,6 +19,7 @@ python-dotenv==1.0.1
 thefuzz==0.22.1
 RapidFuzz==3.14.1
 
+google-auth==2.43.0
 
 gunicorn==23.0.0
 whitenoise==6.12.0
