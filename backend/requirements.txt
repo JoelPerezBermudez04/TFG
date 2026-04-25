@@ -20,6 +20,7 @@ thefuzz==0.22.1
 RapidFuzz==3.14.1
 
 google-auth==2.43.0
+requests==2.32.3
 
 gunicorn==23.0.0
 whitenoise==6.12.0
