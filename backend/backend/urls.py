@@ -2,10 +2,12 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 from myapp.views import *
+from myapp.views_google import GoogleAuthViewSet
 
 router = DefaultRouter()
 
 router.register(r'usuaris', UsuariViewSet, basename='usuari')
+router.register(r'usuaris', GoogleAuthViewSet, basename='usuari-google')
 router.register(r'productes', ProducteViewSet, basename='producte')
 router.register(r'categories', CategoriaViewSet, basename='categoria')
 router.register(r'inventari', ProducteInventariViewSet, basename='inventari')

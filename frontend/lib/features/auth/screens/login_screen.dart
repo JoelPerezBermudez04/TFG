@@ -43,6 +43,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleLogin() async {
+    final auth = context.read<AuthProvider>();
+    final success = await auth.loginWithGoogle();
+
+    if (!success && mounted && auth.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error!),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 60),
+                // Logo
                 Container(
                   width: 100,
                   height: 100,
@@ -63,10 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const Center(
-                    child: Text(
-                      '🥦',
-                      style: TextStyle(fontSize: 48),
-                    ),
+                    child: Text('🥦', style: TextStyle(fontSize: 48)),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -82,13 +94,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Inicia sessió per continuar',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
+                // Camp usuari
                 TextFormField(
                   controller: _usernameController,
                   decoration: const InputDecoration(
@@ -104,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+                // Camp contrasenya
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
@@ -113,9 +124,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icon(
                         _obscurePassword ? Icons.visibility_off : Icons.visibility,
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   obscureText: _obscurePassword,
@@ -129,6 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 const SizedBox(height: 32),
+                // Botó login
                 Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     return ElevatedButton(
@@ -146,7 +157,47 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+                // Separador
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'o continua amb',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Botó Google
+                Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    return OutlinedButton(
+                      onPressed: auth.isSubmitting ? null : _handleGoogleLogin,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/images/google_logo.png',
+                            height: 20,
+                            width: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Continuar amb Google'),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 24),
+                // Enllaç registre
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

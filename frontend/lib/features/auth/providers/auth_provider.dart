@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/config/api_config.dart';
 import '../models/user_model.dart';
@@ -8,6 +10,9 @@ enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthProvider with ChangeNotifier {
   final _api = ApiService();
+  final _googleSignIn = GoogleSignIn(
+    serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+  );
 
   User? _user;
   AuthStatus _status = AuthStatus.checking;
@@ -76,6 +81,57 @@ class AuthProvider with ChangeNotifier {
         return true;
       } else {
         _error = _parseError(response['body'], 'Error en iniciar sessió');
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = _connectionError(e);
+      _isSubmitting = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _isSubmitting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        _error = "No s'ha pogut obtenir el token de Google.";
+        _isSubmitting = false;
+        notifyListeners();
+        return false;
+      }
+
+      final response = await _api.post(ApiConfig.googleLogin, {'id_token': idToken});
+
+      if (response['statusCode'] == 200) {
+        final data = response['body'] as Map<String, dynamic>;
+        await _api.setTokens(
+          access: data['tokens']['access'],
+          refresh: data['tokens']['refresh'],
+        );
+        _user = User.fromJson(data['usuari']);
+        _status = AuthStatus.authenticated;
+        _isSubmitting = false;
+        notifyListeners();
+        return true;
+      } else {
+        _error = _parseError(response['body'], 'Error en iniciar sessió amb Google');
+        await _googleSignIn.signOut();
         _isSubmitting = false;
         notifyListeners();
         return false;
@@ -241,6 +297,9 @@ class AuthProvider with ChangeNotifier {
           await _api.post(ApiConfig.logout, {'refresh': refresh});
         }
       } catch (_) {}
+    }
+    if (_user?.provider == 'GOOGLE') {
+      await _googleSignIn.signOut();
     }
     await _clearSession();
     notifyListeners();

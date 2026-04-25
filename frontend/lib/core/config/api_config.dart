@@ -9,6 +9,7 @@ class ApiConfig {
   static const String editProfile = '/usuaris/editar/';
   static const String changePassword = '/usuaris/canviar-password/';
   static const String deleteAccount = '/usuaris/eliminar/';
+  static const String googleLogin = '/usuaris/google/';
 
   static const String products = '/productes/';
   static const String categories = '/categories/';
