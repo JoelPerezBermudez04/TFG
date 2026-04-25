@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
+from django.http import JsonResponse
 from myapp.views import *
 
 router = DefaultRouter()
@@ -15,6 +16,7 @@ router.register(r'favorits', FavoritViewSet, basename='favorit')
 router.register(r'recomanacions', RecomanacioViewSet, basename='recomanacio')
 
 urlpatterns = [
+    path('health/', lambda request: JsonResponse({'status': 'ok'})),
     path('', include(router.urls)),
     path('admin/', admin.site.urls),
 ]
