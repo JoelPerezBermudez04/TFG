@@ -69,6 +69,8 @@ class EditarUsuariSerializer(serializers.ModelSerializer):
 
 class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source='producte.nom', read_only=True)
+    producte_emoji = serializers.CharField(source='producte.emoji', read_only=True)
+    producte_imatge_url = serializers.URLField(source='producte.imatge_url', read_only=True)
     caducat = serializers.SerializerMethodField()
  
     class Meta:
