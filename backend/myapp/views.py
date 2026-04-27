@@ -216,7 +216,6 @@ def _unique_username(base):
 class ProducteViewSet(ViewSet):
 
     def get_permissions(self):
-        # Crear, editar i eliminar: només admins. Llegir: qualsevol autenticat.
         if self.action in {'create', 'update', 'destroy'}:
             return [IsAdminUser()]
         return [IsAuthenticated()]
@@ -226,7 +225,7 @@ class ProducteViewSet(ViewSet):
         categoria = request.query_params.get('categoria')
         cerca = request.query_params.get('cerca')
         if categoria:
-            queryset = queryset.filter(categoria__nom__iexact=categoria)
+            queryset = queryset.filter(categoria_id=categoria)
         if cerca:
             from thefuzz import process
             productes = list(queryset)
@@ -289,7 +288,7 @@ class ProducteInventariViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        qs = ProducteInventari.objects.filter(usuari=request.user).select_related('producte')
+        qs = ProducteInventari.objects.filter(usuari=request.user).select_related('producte__categoria')
         return Response(ProducteInventariSerializer(qs, many=True).data)
 
     def retrieve(self, request, pk=None):

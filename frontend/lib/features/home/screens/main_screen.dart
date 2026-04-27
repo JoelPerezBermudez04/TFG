@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/screens/profile_screen.dart';
+import '../../inventari/screens/inventory_screen.dart';
+import '../../inventari/screens/add_product_screen.dart';
+import '../../inventari/providers/inventory_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,10 +18,18 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     _HomePlaceholder(),
-    _InventoryPlaceholder(),
+    InventoryScreen(),
     _RecipesPlaceholder(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<InventoryProvider>().fetchInventory();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,11 +39,10 @@ class _MainScreenState extends State<MainScreen> {
         children: _screens,
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Afegir producte — pròximament')),
-          );
-        },
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddProductScreen()),
+        ),
         shape: const CircleBorder(),
         child: const Icon(Icons.add, size: 28),
       ),
@@ -49,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 _buildNavItem(0, Icons.home_outlined, Icons.home, 'Inici'),
                 _buildNavItem(1, Icons.kitchen_outlined, Icons.kitchen, 'Rebost'),
-                const SizedBox(width: 56), // Espai per al FAB
+                const SizedBox(width: 56),
                 _buildNavItem(2, Icons.menu_book_outlined, Icons.menu_book, 'Receptes'),
                 _buildNavItem(3, Icons.person_outline, Icons.person, 'Perfil'),
               ],
@@ -103,28 +114,6 @@ class _HomePlaceholder extends StatelessWidget {
             Text('🏠', style: TextStyle(fontSize: 48)),
             SizedBox(height: 16),
             Text('Inici', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            SizedBox(height: 8),
-            Text('Pròximament', style: TextStyle(color: AppColors.textSecondary)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InventoryPlaceholder extends StatelessWidget {
-  const _InventoryPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('🧺', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 16),
-            Text('Rebost', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             SizedBox(height: 8),
             Text('Pròximament', style: TextStyle(color: AppColors.textSecondary)),
           ],

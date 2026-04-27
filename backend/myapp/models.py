@@ -8,7 +8,7 @@ class Usuari(AbstractUser):
         ('GOOGLE', 'Google'),
     ]
     provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='LOCAL')
-    dies_avis_caducitat = models.IntegerField(default=5) # 0 = notificacions de caducitat desactivades
+    dies_avis_caducitat = models.IntegerField(default=5)
 
 
 class Categoria(models.Model):
@@ -22,10 +22,8 @@ class Categoria(models.Model):
 class Producte(models.Model):
     nom = models.CharField(max_length=100, unique=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-    emoji = models.CharField(max_length=10, default='🛒')#fallback
+    emoji = models.CharField(max_length=10, default='🛒')
     imatge_url = models.URLField(blank=True, null=True)
-
-    # id Spoonacular, nom imatge i nom en anglès per fer matching amb receptes
     alias_api = models.JSONField(blank=True, null=True)
 
     def __str__(self):
@@ -49,7 +47,7 @@ class ProducteInventari(models.Model):
     data_afegit = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('usuari', 'producte')
+        ordering = ['data_caducitat']
 
 
 class Recepta(models.Model):

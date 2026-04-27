@@ -5,6 +5,8 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/home/screens/main_screen.dart';
+import 'features/inventari/providers/inventory_provider.dart';
+import 'features/products/providers/products_provider.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: '.env');
@@ -19,6 +21,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ProductsProvider()),
+        ChangeNotifierProvider(create: (_) => InventoryProvider()),
       ],
       child: MaterialApp(
         title: 'My App',
