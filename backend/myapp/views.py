@@ -288,7 +288,7 @@ class ProducteInventariViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        qs = ProducteInventari.objects.filter(usuari=request.user).select_related('producte')
+        qs = ProducteInventari.objects.filter(usuari=request.user).select_related('producte__categoria')
         return Response(ProducteInventariSerializer(qs, many=True).data)
 
     def retrieve(self, request, pk=None):

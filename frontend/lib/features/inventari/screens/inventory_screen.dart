@@ -17,6 +17,7 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'Tot';
+  String? _selectedCategoria; // null = totes les categories
   final List<String> _filters = ['Tot', 'Fresc', 'Aviat', 'Caducat'];
 
   @override
@@ -27,30 +28,50 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
+  /// Extreu les categories úniques presents als items carregats
+  List<({int id, String nom})> _getCategories(List<InventoryItem> items) {
+    final seen = <int>{};
+    final result = <({int id, String nom})>[];
+    for (final item in items) {
+      final catId = item.producteCategoriaId;
+      final catNom = item.producteCategoriaNom;
+      if (catId != null && catNom != null && seen.add(catId)) {
+        result.add((id: catId, nom: catNom));
+      }
+    }
+    result.sort((a, b) => a.nom.compareTo(b.nom));
+    return result;
+  }
+
   List<InventoryItem> _applyFilters(List<InventoryItem> items) {
     return items.where((item) {
+      // Filtre de cerca
       if (_searchQuery.isNotEmpty) {
         final name = (item.producteNom ?? '').toLowerCase();
         if (!name.contains(_searchQuery.toLowerCase())) return false;
       }
+      // Filtre de caducitat
       switch (_selectedFilter) {
         case 'Fresc':
-          return item.expiryStatus == ExpiryStatus.fresh ||
-              item.expiryStatus == ExpiryStatus.none;
+          if (item.expiryStatus != ExpiryStatus.fresh &&
+              item.expiryStatus != ExpiryStatus.none) return false;
         case 'Aviat':
-          return item.expiryStatus == ExpiryStatus.soon ||
-              item.expiryStatus == ExpiryStatus.urgent;
+          if (item.expiryStatus != ExpiryStatus.soon &&
+              item.expiryStatus != ExpiryStatus.urgent) return false;
         case 'Caducat':
-          return item.expiryStatus == ExpiryStatus.expired;
-        default:
-          return true;
+          if (item.expiryStatus != ExpiryStatus.expired) return false;
       }
+      // Filtre de categoria
+      if (_selectedCategoria != null &&
+          item.producteCategoriaNom != _selectedCategoria) return false;
+      return true;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final inventory = context.watch<InventoryProvider>();
+    final categories = _getCategories(inventory.items);
     final filteredItems = _applyFilters(inventory.items);
 
     return Scaffold(
@@ -59,6 +80,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
       body: Column(
         children: [
+          // Barra de cerca
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: TextField(
@@ -77,6 +99,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           const SizedBox(height: 12),
 
+          // Fila 1: filtres d'estat (Fresc / Aviat / Caducat)
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -102,8 +125,63 @@ class _InventoryScreenState extends State<InventoryScreen> {
               },
             ),
           ),
+
+          // Fila 2: filtres de categoria (apareix quan hi ha més d'una categoria)
+          if (categories.length > 1) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: categories.length + 1, // +1 per al chip "Totes"
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    final isSelected = _selectedCategoria == null;
+                    return ChoiceChip(
+                      label: const Text('Totes'),
+                      selected: isSelected,
+                      onSelected: (_) =>
+                          setState(() => _selectedCategoria = null),
+                      backgroundColor: AppColors.surface,
+                      selectedColor: AppColors.primaryLight,
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    );
+                  }
+                  final cat = categories[index - 1];
+                  final isSelected = _selectedCategoria == cat.nom;
+                  return ChoiceChip(
+                    label: Text(cat.nom),
+                    selected: isSelected,
+                    onSelected: (_) => setState(
+                      () => _selectedCategoria = isSelected ? null : cat.nom,
+                    ),
+                    backgroundColor: AppColors.surface,
+                    selectedColor: AppColors.primaryLight,
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
 
+          // Comptador de resultats
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Align(
@@ -119,6 +197,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           const SizedBox(height: 8),
 
+          // Llista d'items
           Expanded(
             child: inventory.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -193,6 +272,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  if (item.producteCategoriaNom != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.producteCategoriaNom!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

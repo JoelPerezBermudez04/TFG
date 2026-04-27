@@ -5,6 +5,8 @@ class InventoryItem {
   final String? producteNom;
   final String? producteEmoji;
   final String? producteImatgeUrl;
+  final int? producteCategoriaId;
+  final String? producteCategoriaNom;
   final double quantitat;
   final String unitat;
   final DateTime? dataCaducitat;
@@ -18,6 +20,8 @@ class InventoryItem {
     this.producteNom,
     this.producteEmoji,
     this.producteImatgeUrl,
+    this.producteCategoriaId,
+    this.producteCategoriaNom,
     required this.quantitat,
     required this.unitat,
     this.dataCaducitat,
@@ -33,6 +37,8 @@ class InventoryItem {
       producteNom: json['producte_nom'],
       producteEmoji: json['producte_emoji'],
       producteImatgeUrl: json['producte_imatge_url'],
+      producteCategoriaId: json['producte_categoria_id'],
+      producteCategoriaNom: json['producte_categoria_nom'],
       quantitat: (json['quantitat'] as num).toDouble(),
       unitat: json['unitat'],
       dataCaducitat: json['data_caducitat'] != null
