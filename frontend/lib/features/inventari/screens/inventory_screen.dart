@@ -17,7 +17,7 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   String _searchQuery = '';
   String _selectedFilter = 'Tot';
-  String? _selectedCategoria; // null = totes les categories
+  String? _selectedCategoria;
   final List<String> _filters = ['Tot', 'Fresc', 'Aviat', 'Caducat'];
 
   @override
@@ -28,15 +28,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     });
   }
 
-  /// Extreu les categories úniques presents als items carregats
-  List<({int id, String nom})> _getCategories(List<InventoryItem> items) {
+  List<({int id, String nom, String emoji})> _getCategories(List<InventoryItem> items) {
     final seen = <int>{};
-    final result = <({int id, String nom})>[];
+    final result = <({int id, String nom, String emoji})>[];
     for (final item in items) {
       final catId = item.producteCategoriaId;
       final catNom = item.producteCategoriaNom;
+      final catEmoji = item.producteCategoriaEmoji ?? '🛒';
       if (catId != null && catNom != null && seen.add(catId)) {
-        result.add((id: catId, nom: catNom));
+        result.add((id: catId, nom: catNom, emoji: catEmoji));
       }
     }
     result.sort((a, b) => a.nom.compareTo(b.nom));
@@ -45,12 +45,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   List<InventoryItem> _applyFilters(List<InventoryItem> items) {
     return items.where((item) {
-      // Filtre de cerca
       if (_searchQuery.isNotEmpty) {
         final name = (item.producteNom ?? '').toLowerCase();
         if (!name.contains(_searchQuery.toLowerCase())) return false;
       }
-      // Filtre de caducitat
       switch (_selectedFilter) {
         case 'Fresc':
           if (item.expiryStatus != ExpiryStatus.fresh &&
@@ -61,7 +59,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         case 'Caducat':
           if (item.expiryStatus != ExpiryStatus.expired) return false;
       }
-      // Filtre de categoria
       if (_selectedCategoria != null &&
           item.producteCategoriaNom != _selectedCategoria) return false;
       return true;
@@ -80,7 +77,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
       body: Column(
         children: [
-          // Barra de cerca
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: TextField(
@@ -99,7 +95,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Fila 1: filtres d'estat (Fresc / Aviat / Caducat)
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -126,7 +121,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ),
 
-          // Fila 2: filtres de categoria (apareix quan hi ha més d'una categoria)
           if (categories.length > 1) ...[
             const SizedBox(height: 8),
             SizedBox(
@@ -134,13 +128,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: categories.length + 1, // +1 per al chip "Totes"
+                itemCount: categories.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     final isSelected = _selectedCategoria == null;
                     return ChoiceChip(
-                      label: const Text('Totes'),
+                      label: const Text('🗂️ Totes'),
                       selected: isSelected,
                       onSelected: (_) =>
                           setState(() => _selectedCategoria = null),
@@ -159,7 +153,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   final cat = categories[index - 1];
                   final isSelected = _selectedCategoria == cat.nom;
                   return ChoiceChip(
-                    label: Text(cat.nom),
+                    label: Text('${cat.emoji} ${cat.nom}'),
                     selected: isSelected,
                     onSelected: (_) => setState(
                       () => _selectedCategoria = isSelected ? null : cat.nom,
@@ -181,7 +175,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ],
           const SizedBox(height: 8),
 
-          // Comptador de resultats
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Align(
@@ -197,7 +190,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Llista d'items
           Expanded(
             child: inventory.isLoading
                 ? const Center(child: CircularProgressIndicator())

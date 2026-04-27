@@ -73,6 +73,7 @@ class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_imatge_url = serializers.URLField(source='producte.imatge_url', read_only=True)
     producte_categoria_id = serializers.IntegerField(source='producte.categoria.id', read_only=True)
     producte_categoria_nom = serializers.CharField(source='producte.categoria.nom', read_only=True)
+    producte_categoria_emoji = serializers.CharField(source='producte.categoria.emoji', read_only=True)
     caducat = serializers.SerializerMethodField()
  
     class Meta:
