@@ -15,16 +15,21 @@ class ProductsProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> fetchProducts({String? cerca}) async {
+  Future<void> fetchProducts({String? cerca, int? categoriaId}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       String endpoint = ApiConfig.products;
+      final params = <String>[];
       if (cerca != null && cerca.isNotEmpty) {
-        endpoint += '?cerca=${Uri.encodeComponent(cerca)}';
+        params.add('cerca=${Uri.encodeComponent(cerca)}');
       }
+      if (categoriaId != null) {
+        params.add('categoria=$categoriaId');
+      }
+      if (params.isNotEmpty) endpoint += '?${params.join('&')}';
 
       final response = await _api.get(endpoint);
 
