@@ -45,7 +45,9 @@ class InventoryItem {
 
   int get daysUntilExpiry {
     if (dataCaducitat == null) return 999;
-    return dataCaducitat!.difference(DateTime.now()).inDays;
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final expiry = DateTime(dataCaducitat!.year, dataCaducitat!.month, dataCaducitat!.day);
+    return expiry.difference(today).inDays;
   }
 
   ExpiryStatus get expiryStatus {
