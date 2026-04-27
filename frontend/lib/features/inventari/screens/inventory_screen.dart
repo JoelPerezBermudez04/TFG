@@ -20,6 +20,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String? _selectedCategoria;
   final List<String> _filters = ['Tot', 'Fresc', 'Aviat', 'Caducat'];
 
+  bool _isGridView = false;
+  String _sortBy = 'caducitat';
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +44,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
     result.sort((a, b) => a.nom.compareTo(b.nom));
     return result;
+  }
+
+  List<InventoryItem> _sortItems(List<InventoryItem> items) {
+    final sorted = List<InventoryItem>.from(items);
+    switch (_sortBy) {
+      case 'nom':
+        sorted.sort((a, b) => (a.producteNom ?? '').compareTo(b.producteNom ?? ''));
+      case 'categoria':
+        sorted.sort((a, b) => (a.producteCategoriaNom ?? '').compareTo(b.producteCategoriaNom ?? ''));
+      case 'caducitat':
+      default:
+        sorted.sort((a, b) {
+          if (a.dataCaducitat == null && b.dataCaducitat == null) return 0;
+          if (a.dataCaducitat == null) return 1;
+          if (b.dataCaducitat == null) return -1;
+          return a.dataCaducitat!.compareTo(b.dataCaducitat!);
+        });
+    }
+    return sorted;
   }
 
   List<InventoryItem> _applyFilters(List<InventoryItem> items) {
@@ -69,7 +91,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget build(BuildContext context) {
     final inventory = context.watch<InventoryProvider>();
     final categories = _getCategories(inventory.items);
-    final filteredItems = _applyFilters(inventory.items);
+    final filteredItems = _sortItems(_applyFilters(inventory.items));
 
     return Scaffold(
       appBar: AppBar(
@@ -134,7 +156,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   if (index == 0) {
                     final isSelected = _selectedCategoria == null;
                     return ChoiceChip(
-                      label: const Text('🗂️ Totes'),
+                      label: const Text('⭐ Totes'),
                       selected: isSelected,
                       onSelected: (_) =>
                           setState(() => _selectedCategoria = null),
@@ -177,15 +199,52 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${filteredItems.length} producte${filteredItems.length != 1 ? 's' : ''}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+            child: Row(
+              children: [
+                Text(
+                  '${filteredItems.length} producte${filteredItems.length != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
+                const Spacer(),
+                // Botó ordenació
+                GestureDetector(
+                  onTap: _showSortOptions,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _sortBy != 'caducitat' ? AppColors.primaryLight : AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.textMuted.withOpacity(0.2)),
+                    ),
+                    child: Icon(
+                      Icons.sort_rounded,
+                      size: 20,
+                      color: _sortBy != 'caducitat' ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Toggle vista
+                GestureDetector(
+                  onTap: () => setState(() => _isGridView = !_isGridView),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.textMuted.withOpacity(0.2)),
+                    ),
+                    child: Icon(
+                      _isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -197,13 +256,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ? _buildEmptyState()
                     : RefreshIndicator(
                         onRefresh: () => inventory.fetchInventory(),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                          itemCount: filteredItems.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) =>
-                              _buildItemCard(context, filteredItems[index]),
-                        ),
+                        child: _isGridView
+                          ? GridView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.75,
+                              ),
+                              itemCount: filteredItems.length,
+                              itemBuilder: (context, index) =>
+                                  _buildGridCard(context, filteredItems[index]),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                              itemCount: filteredItems.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              itemBuilder: (context, index) =>
+                                  _buildItemCard(context, filteredItems[index]),
+                            ),
                       ),
           ),
         ],
@@ -371,4 +443,167 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   String _formatDate(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Ordenar per',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildSortOption('caducitat', 'Data de caducitat', Icons.event),
+              _buildSortOption('nom', 'Nom (A-Z)', Icons.sort_by_alpha),
+              _buildSortOption('categoria', 'Categoria', Icons.category_outlined),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortOption(String value, String label, IconData icon) {
+    final isSelected = _sortBy == value;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check, color: AppColors.primary)
+          : null,
+      onTap: () {
+        setState(() => _sortBy = value);
+        Navigator.pop(context);
+      },
+    );
+  }
+  Widget _buildGridCard(BuildContext context, InventoryItem item) {
+    final (bgColor, textColor, label) = _getStatusDisplay(item);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProductDetailScreen(itemId: item.id),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Imatge amb indicador de color
+            Expanded(
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: bgColor.withOpacity(0.3),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    child: Center(
+                      child: ProductImage(
+                        imatgeUrl: item.producteImatgeUrl,
+                        emoji: item.producteEmoji,
+                        size: 48,
+                        backgroundColor: Colors.transparent,
+                        borderRadius: 0,
+                      ),
+                    ),
+                  ),
+                  // Indicador de dies/estat
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Info
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.producteNom ?? 'Producte',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${item.quantitat % 1 == 0 ? item.quantitat.toInt() : item.quantitat} ${item.unitat == 'unitat' && item.quantitat != 1 ? 'unitats' : item.unitat}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
