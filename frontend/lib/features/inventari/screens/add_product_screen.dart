@@ -119,10 +119,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
         leading: _step == 1
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => setState(() {
-                  _step = 0;
-                  _selectedProduct = null;
-                }),
+                onPressed: () {
+                  setState(() {
+                    _step = 0;
+                    _selectedProduct = null;
+                  });
+                  if (_selectedCategory != null) {
+                    context.read<ProductsProvider>().fetchProducts(categoriaId: _selectedCategory!.id);
+                  }
+                },
               )
             : null,
       ),
@@ -148,7 +153,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _selectedCategory = null);
+                        setState(() {
+                          _selectedCategory = null;
+                        });
                         context.read<ProductsProvider>().clearProducts();
                       },
                     )
@@ -164,7 +171,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
             },
           ),
         ),
-
         Expanded(
           child: isSearching
               ? _buildSearchResults(products)
@@ -240,7 +246,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: GestureDetector(
             onTap: () {
               setState(() => _selectedCategory = null);
-              products.clearProducts();
             },
             child: Row(
               children: [
@@ -406,7 +411,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
           ),
           const SizedBox(height: 28),
-
           const Text(
             'Quantitat',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
@@ -450,7 +454,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ],
           ),
           const SizedBox(height: 24),
-
           const Text(
             'Data de caducitat',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
@@ -491,7 +494,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
           ),
           const SizedBox(height: 32),
-
           Consumer<InventoryProvider>(
             builder: (context, inventory, _) => ElevatedButton(
               onPressed: inventory.isLoading ? null : _handleSubmit,

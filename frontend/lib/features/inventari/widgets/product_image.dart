@@ -34,7 +34,8 @@ class ProductImage extends StatelessWidget {
     if (imatgeUrl != null && imatgeUrl!.isNotEmpty) {
       return Image.network(
         imatgeUrl!,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return _buildEmoji();
