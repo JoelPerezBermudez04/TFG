@@ -209,7 +209,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 const Spacer(),
-                // Botó ordenació
                 GestureDetector(
                   onTap: _showSortOptions,
                   child: Container(
@@ -227,7 +226,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Toggle vista
                 GestureDetector(
                   onTap: () => setState(() => _isGridView = !_isGridView),
                   child: Container(
@@ -532,7 +530,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Imatge amb indicador de color
             Expanded(
               child: Stack(
                 children: [
@@ -551,7 +548,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       ),
                     ),
                   ),
-                  // Indicador de dies/estat
                   Positioned(
                     top: 8,
                     right: 8,
@@ -574,7 +570,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               ),
             ),
-            // Info
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
