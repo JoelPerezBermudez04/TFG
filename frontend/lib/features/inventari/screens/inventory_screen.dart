@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../models/inventory_item_model.dart';
 import 'add_product_screen.dart';
@@ -65,7 +66,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return sorted;
   }
 
-  List<InventoryItem> _applyFilters(List<InventoryItem> items) {
+  List<InventoryItem> _applyFilters(List<InventoryItem> items, int diesAvis) {
     return items.where((item) {
       if (_searchQuery.isNotEmpty) {
         final name = (item.producteNom ?? '').toLowerCase();
@@ -73,13 +74,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
       }
       switch (_selectedFilter) {
         case 'Fresc':
-          if (item.expiryStatus != ExpiryStatus.fresh &&
-              item.expiryStatus != ExpiryStatus.none) return false;
+          if (item.expiryStatusFor(diesAvis) != ExpiryStatus.fresh &&
+              item.expiryStatusFor(diesAvis) != ExpiryStatus.none) return false;
         case 'Aviat':
-          if (item.expiryStatus != ExpiryStatus.soon &&
-              item.expiryStatus != ExpiryStatus.urgent) return false;
+          if (item.expiryStatusFor(diesAvis) != ExpiryStatus.soon &&
+              item.expiryStatusFor(diesAvis) != ExpiryStatus.urgent) return false;
         case 'Caducat':
-          if (item.expiryStatus != ExpiryStatus.expired) return false;
+          if (item.expiryStatusFor(diesAvis) != ExpiryStatus.expired) return false;
       }
       if (_selectedCategoria != null &&
           item.producteCategoriaNom != _selectedCategoria) return false;
@@ -90,8 +91,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final inventory = context.watch<InventoryProvider>();
+    final diesAvis = context.watch<AuthProvider>().user?.diesAvisCaducitat ?? 5;
     final categories = _getCategories(inventory.items);
-    final filteredItems = _sortItems(_applyFilters(inventory.items));
+    final filteredItems = _sortItems(_applyFilters(inventory.items, diesAvis));
 
     return Scaffold(
       appBar: AppBar(
@@ -282,7 +284,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Widget _buildItemCard(BuildContext context, InventoryItem item) {
-    final (bgColor, textColor, label) = _getStatusDisplay(item);
+    final diesAvis = context.read<AuthProvider>().user?.diesAvisCaducitat ?? 5;
+    final (bgColor, textColor, label) = _getStatusDisplay(item, diesAvis);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -419,8 +422,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  (Color, Color, String) _getStatusDisplay(InventoryItem item) {
-    switch (item.expiryStatus) {
+  (Color, Color, String) _getStatusDisplay(InventoryItem item, int diesAvis) {
+    switch (item.expiryStatusFor(diesAvis)) {
       case ExpiryStatus.expired:
         return (AppColors.expiryUrgent, AppColors.expiryUrgentText, 'Caducat');
       case ExpiryStatus.urgent:
@@ -506,7 +509,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
   Widget _buildGridCard(BuildContext context, InventoryItem item) {
-    final (bgColor, textColor, label) = _getStatusDisplay(item);
+    final diesAvis = context.read<AuthProvider>().user?.diesAvisCaducitat ?? 5;
+    final (bgColor, textColor, label) = _getStatusDisplay(item, diesAvis);
 
     return GestureDetector(
       onTap: () => Navigator.push(
