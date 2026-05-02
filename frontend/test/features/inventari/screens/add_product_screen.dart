@@ -5,7 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../providers/inventory_provider.dart';
 import '../../products/providers/products_provider.dart';
 import '../../products/models/product_model.dart';
-import '../models/inventory_item_model.dart';
+import '../models/inventory_item_model_test.dart';
 import '../widgets/product_image.dart';
 
 class AddProductScreen extends StatefulWidget {
