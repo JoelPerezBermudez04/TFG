@@ -25,6 +25,10 @@ class Producte(models.Model):
     emoji = models.CharField(max_length=10, default='🛒')
     imatge_url = models.URLField(blank=True, null=True)
     alias_api = models.JSONField(blank=True, null=True)
+    dies_caducitat_aprox = models.IntegerField(
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return f'{self.emoji} {self.nom}'
