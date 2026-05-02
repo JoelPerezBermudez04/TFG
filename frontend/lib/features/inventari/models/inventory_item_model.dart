@@ -59,14 +59,16 @@ class InventoryItem {
     return expiry.difference(today).inDays;
   }
 
-  ExpiryStatus get expiryStatus {
+  ExpiryStatus expiryStatusFor(int diesAvis) {
     if (dataCaducitat == null) return ExpiryStatus.none;
     final days = daysUntilExpiry;
     if (days < 0 || caducat) return ExpiryStatus.expired;
     if (days <= 2) return ExpiryStatus.urgent;
-    if (days <= 5) return ExpiryStatus.soon;
+    if (days <= diesAvis) return ExpiryStatus.soon;
     return ExpiryStatus.fresh;
   }
+
+  ExpiryStatus get expiryStatus => expiryStatusFor(5);
 }
 
 enum ExpiryStatus { none, expired, urgent, soon, fresh }

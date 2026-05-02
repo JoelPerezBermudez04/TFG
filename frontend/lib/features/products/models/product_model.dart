@@ -25,6 +25,7 @@ class Product {
   final String? categoriaNom;
   final String emoji;
   final String? imatgeUrl;
+  final int? diesCaducitatAprox;
 
   Product({
     required this.id,
@@ -33,6 +34,7 @@ class Product {
     this.categoriaNom,
     required this.emoji,
     this.imatgeUrl,
+    this.diesCaducitatAprox,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,12 @@ class Product {
       categoriaNom: json['categoria_nom'],
       emoji: json['emoji'] ?? '🛒',
       imatgeUrl: json['imatge_url'],
+      diesCaducitatAprox: json['dies_caducitat_aprox'],
     );
+  }
+
+  DateTime? get suggestedExpiryDate {
+    if (diesCaducitatAprox == null) return null;
+    return DateTime.now().add(Duration(days: diesCaducitatAprox!));
   }
 }
