@@ -107,8 +107,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _selectedProduct = product;
       _step = 1;
       _searchController.clear();
-      context.read<ProductsProvider>().clearProducts();
+      _expiryDate = product.suggestedExpiryDate;
     });
+    context.read<ProductsProvider>().clearProducts();
   }
 
   @override
