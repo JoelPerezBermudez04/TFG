@@ -75,12 +75,12 @@ class ProducteInventariSerializer(serializers.ModelSerializer):
     producte_categoria_nom = serializers.CharField(source='producte.categoria.nom', read_only=True)
     producte_categoria_emoji = serializers.CharField(source='producte.categoria.emoji', read_only=True)
     caducat = serializers.SerializerMethodField()
- 
+
     class Meta:
         model = ProducteInventari
         fields = '__all__'
         read_only_fields = ['usuari', 'data_afegit']
- 
+
     def get_caducat(self, obj):
         if obj.data_caducitat is None:
             return False
@@ -89,20 +89,63 @@ class ProducteInventariSerializer(serializers.ModelSerializer):
 
 
 class ProducteInventariEditSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = ProducteInventari
         fields = ['quantitat', 'unitat', 'data_caducitat']
 
 
+class IngredientReceptaSerializer(serializers.ModelSerializer):
+    producte_nom = serializers.CharField(source='producte.nom', read_only=True)
+    producte_emoji = serializers.CharField(source='producte.emoji', read_only=True)
+    producte_imatge_url = serializers.URLField(source='producte.imatge_url', read_only=True)
+
+    class Meta:
+        model = IngredientRecepta
+        fields = [
+            'id', 'producte', 'producte_nom', 'producte_emoji',
+            'producte_imatge_url', 'quantitat', 'unitat', 'nom_original',
+        ]
+
+
 class ReceptaSerializer(serializers.ModelSerializer):
+    ingredients = IngredientReceptaSerializer(
+        source='ingredientrecepta_set', many=True, read_only=True
+    )
+
     class Meta:
         model = Recepta
-        fields = '__all__'
+        fields = [
+            'id_api', 'nom', 'descripcio', 'imatge_url',
+            'temps_preparacio', 'porcions',
+            'instruccions', 'dietes', 'intolerancias',
+            'ingredients',
+        ]
+
+
+class ReceptaResumSerializer(serializers.ModelSerializer):
+    """Serialitzador lleuger sense ingredients ni instruccions, per a llistes i recomanacions."""
+    num_ingredients = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Recepta
+        fields = [
+            'id_api', 'nom', 'imatge_url',
+            'temps_preparacio', 'porcions',
+            'dietes', 'intolerancias',
+            'num_ingredients',
+        ]
+
+    def get_num_ingredients(self, obj):
+        return obj.ingredientrecepta_set.count()
 
 
 class FavoritSerializer(serializers.ModelSerializer):
     recepta_nom = serializers.CharField(source='recepta.nom', read_only=True)
+    recepta_imatge_url = serializers.URLField(source='recepta.imatge_url', read_only=True)
+    recepta_temps_preparacio = serializers.IntegerField(
+        source='recepta.temps_preparacio', read_only=True
+    )
+    recepta_dietes = serializers.JSONField(source='recepta.dietes', read_only=True)
 
     class Meta:
         model = Favorit

@@ -571,12 +571,157 @@ DIES_CADUCITAT = {
     793: 730,
     794: 730,
     795: 730,
-    796: 730
+    796: 730,
+    # Nous productes (797-940)
+    797: 7,      # Julivert (herba fresca)
+    798: 7,      # Alfàbrega fresca
+    799: 7,      # Coriandre (herba fresca)
+    800: 7,      # Cibulet
+    801: 7,      # Estragó
+    802: 7,      # Menta
+    803: 7,      # Marduix
+    804: 21,     # Gingebre (arrel fresca)
+    805: 730,    # Pebre de caiena mòlt (espècia seca)
+    806: 730,    # Xili en pols
+    807: 730,    # Curry en pols
+    808: 730,    # Coriandre mòlt
+    809: 730,    # Gingebre en pols
+    810: 730,    # Garam masala
+    811: 730,    # Cardamom
+    812: 730,    # Nou moscada
+    813: 365,    # Midó de blat de moro
+    814: 365,    # Llevat en pols
+    815: 730,    # Bicarbonat de sodi
+    816: 730,    # Vinagre balsàmic
+    817: 730,    # Salsa worcestershire
+    818: 365,    # Oli d'alfàbrega
+    819: 180,    # Pesto d'alfàbrega
+    820: 7,      # Alfàbrega tailandesa (fresca)
+    821: 730,    # Alfàbrega seca
+    822: 14,     # Pebre de caiena fresc
+    823: 730,    # Extracte de vainilla
+    824: 730,    # Extracte de vainilla bourbon
+    825: 730,    # Vainilla artificial
+    826: 730,    # Cacau en pols
+    827: 730,    # Cacau en pols processat holandès
+    828: 365,    # Miso
+    829: 365,    # Miso vermell
+    830: 365,    # Miso blanc
+    831: 365,    # Miso groc
+    832: 730,    # Salsa teriyaki
+    833: 730,    # Sriracha
+    834: 365,    # Tàperes
+    835: 30,     # Carbassa butternut
+    836: 30,     # Moniato
+    837: 7,      # Puré de moniato (preparat)
+    838: 5,      # Fulles de moniato
+    839: 365,    # Fideus de moniato (sec)
+    840: 30,     # Moniato blanc
+    841: 14,     # Col
+    842: 14,     # Col vermella
+    843: 14,     # Col napa
+    844: 7,      # Fulles de col napa
+    845: 14,     # Col de savoia
+    846: 7,      # Kale
+    847: 7,      # Kale lacinat
+    848: 7,      # Mongetes verdes
+    849: 5,      # Mongetes verdes fresques
+    850: 7,      # Mongetes verdes de caupí
+    851: 365,    # Mongetes verdes en escabetx
+    852: 5,      # Haricots verts (fresques)
+    853: 21,     # Nap
+    854: 21,     # Naps
+    855: 7,      # Cebes tendra
+    856: 30,     # Escalunya
+    857: 30,     # Escalunya de plàtan
+    858: 14,     # Pebrot
+    859: 730,    # Chile arbol sec
+    860: 14,     # Pebrot vermell
+    861: 14,     # Xili tailandès
+    862: 730,    # Pebrot ancho (sec)
+    863: 14,     # Pebrot jalapeño
+    864: 365,    # Gelatina de jalapeño
+    865: 180,    # Salsa verda calenta
+    866: 14,     # Jalapeño vermell
+    867: 365,    # Jalapeños en escabetx
+    868: 5,      # Alvocat
+    869: 365,    # Oli d'alvocat
+    870: 3,      # Meitats d'alvocat (tallat)
+    871: 7,      # Fulles d'alvocat
+    872: 2,      # Daus d'alvocat (tallat)
+    873: 21,     # Calç (llima)
+    874: 180,    # Llimada (beguda)
+    875: 365,    # Pell de llima (seca)
+    876: 14,     # Mató de llima
+    877: 21,     # Suc de llima
+    878: 14,     # Formatge ricotta
+    879: 90,     # Formatge ricotta salata
+    880: 14,     # Formatge ricotta sense greix
+    881: 14,     # Formatge ricotta baix en greix
+    882: 180,    # Mantega clarificada
+    883: 730,    # Mongetes canellini (seques)
+    884: 730,    # Mongetes canellini seques
+    885: 365,    # Mongetes canellini en conserva
+    886: 730,    # Pasta curta
+    887: 7,      # Macarrons i formatge (preparat)
+    888: 730,    # Macarrons de colze
+    889: 5,      # Pasta curta cuita
+    890: 730,    # Macarrons sense gluten
+    891: 730,    # Farina de civada instantània
+    892: 730,    # Civada tallada acer
+    893: 180,    # Granola
+    894: 180,    # Muesli
+    895: 30,     # Granola casolana
+    896: 180,    # Granola sense gluten
+    897: 14,     # Brou d'os (fresc)
+    898: 14,     # Brou de vedella baix en sodi
+    899: 14,     # Brou de vedella sense greixos menys sodi
+    900: 730,    # Base de pollastre (concentrat)
+    901: 730,    # Brou de pollastre en pols
+    902: 365,    # Olives
+    903: 365,    # Olives gregues
+    904: 365,    # Olives negres
+    905: 365,    # Olives verdes
+    906: 365,    # Olives verdes farcides de piment
+    907: 365,    # Olives kalamata
+    908: 730,    # Sal
+    909: 730,    # Pebre blanc
+    910: 365,    # Farina
+    911: 730,    # Salsa d'ostres
+    912: 730,    # Xarop d'auró
+    913: 730,    # Xarop de panqueques sense sucre
+    914: 730,    # Oli de coco
+    915: 365,    # Passata
+    916: 180,    # Salsa
+    917: 180,    # Salsa verda
+    918: 365,    # Condiment italià
+    919: 7,      # Tomàquets
+    920: 14,     # Pebrot verd
+    921: 730,    # Grans de pebre verd (secs)
+    922: 14,     # Ceba vermella
+    923: 14,     # Ceba vermella perlada
+    924: 7,      # Cols de brussel·les
+    925: 5,      # Mores
+    926: 365,    # Melmelada de móres
+    927: 14,     # Suc de mora
+    928: 365,    # Nabius secs
+    929: 365,    # Mongetes de nabius secs
+    930: 30,     # Formatge feta
+    931: 30,     # Formatge feta reduït en greix
+    932: 30,     # Formatge feta sense greix
+    933: 180,    # Pacanes
+    934: 180,    # Pacanes confitades
+    935: 180,    # Peces de pacana
+    936: 730,    # Llavors de chía
+    937: 14,     # Pebrot de plàtan
+    938: 7,      # Tomàquet pruna
+    939: 7,      # Savi (herba fresca)
+    940: 7,      # Anet (herba fresca)
 }
 
 def main():
     conn = psycopg2.connect(
-        host='dpg-d7fn5vt7vvec73ae6bvg-a.frankfurt-postgres.render.com',
+        host='ep-jolly-cloud-alm2kmi0.c-3.eu-central-1.aws.neon.tech',
         port=5432,
         dbname=os.getenv('DB_NAME'),
         user=os.getenv('DB_USER'),

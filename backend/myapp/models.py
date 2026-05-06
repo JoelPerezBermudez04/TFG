@@ -25,10 +25,7 @@ class Producte(models.Model):
     emoji = models.CharField(max_length=10, default='🛒')
     imatge_url = models.URLField(blank=True, null=True)
     alias_api = models.JSONField(blank=True, null=True)
-    dies_caducitat_aprox = models.IntegerField(
-        null=True,
-        blank=True,
-    )
+    dies_caducitat_aprox = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f'{self.emoji} {self.nom}'
@@ -60,6 +57,10 @@ class Recepta(models.Model):
     descripcio = models.TextField(blank=True)
     imatge_url = models.URLField()
     temps_preparacio = models.IntegerField()
+    porcions = models.IntegerField(default=1)
+    instruccions = models.JSONField(blank=True, null=True)
+    dietes = models.JSONField(blank=True, null=True)
+    intolerancias = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return self.nom
@@ -70,6 +71,7 @@ class IngredientRecepta(models.Model):
     producte = models.ForeignKey(Producte, on_delete=models.CASCADE)
     quantitat = models.FloatField()
     unitat = models.CharField(max_length=10)
+    nom_original = models.CharField(max_length=255, blank=True)
 
     class Meta:
         unique_together = ('recepta', 'producte')
