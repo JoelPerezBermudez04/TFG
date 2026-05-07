@@ -26,6 +26,7 @@ class Producte(models.Model):
     imatge_url = models.URLField(blank=True, null=True)
     alias_api = models.JSONField(blank=True, null=True)
     dies_caducitat_aprox = models.IntegerField(null=True, blank=True)
+    sinonims = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return f'{self.emoji} {self.nom}'
@@ -61,6 +62,7 @@ class Recepta(models.Model):
     instruccions = models.JSONField(blank=True, null=True)
     dietes = models.JSONField(blank=True, null=True)
     intolerancias = models.JSONField(blank=True, null=True)
+    ingredients_no_vinculats = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return self.nom

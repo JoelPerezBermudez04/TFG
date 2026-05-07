@@ -107,6 +107,38 @@ def extreure_intolerancias(data):
 
 # ── Instruccions ──────────────────────────────────────────────────────────────
 
+# Paraules clau que indiquen que un pas és una instrucció de cuina real
+_COOKING_KEYWORDS = re.compile(
+    r'\b(heat|cook|bake|boil|fry|mix|stir|add|place|preheat|season|'
+    r'combine|chop|slice|dice|pour|cover|remove|serve|prepare|cut|'
+    r'bring|reduce|simmer|roast|grill|drain|rinse|whisk|fold|toss|'
+    r'spread|sprinkle|top|transfer|set|let|allow|rest|cool|melt|'
+    r'sauté|saute|blend|pulse|process|squeeze|brush|coat|roll|press|'
+    r'marinate|season|taste|adjust|garnish|arrange|layer|repeat|continue|'
+    r'meanwhile|next|then|finally|once|until|when)\b',
+    re.IGNORECASE
+)
+
+# Longitud mínima i màxima d'un pas vàlid (en caràcters)
+_MIN_STEP_LEN = 20
+_MAX_STEP_LEN = 1500
+
+# Si un pas conté massa paraules d'ingredient (llista d'ingredients colada), descarta'l
+_INGREDIENT_LIST_RE = re.compile(
+    r'^\s*(\d[^.]*\n){3,}',  # 3+ línies que comencen per número = llista
+)
+
+
+def _es_pas_valid(text: str) -> bool:
+    """Retorna True si el text sembla una instrucció de cuina real."""
+    if len(text) < _MIN_STEP_LEN or len(text) > _MAX_STEP_LEN:
+        return False
+    # Ha de tenir almenys una paraula clau de cuina
+    if not _COOKING_KEYWORDS.search(text):
+        return False
+    return True
+
+
 def extreure_instruccions(data):
     analyzed = data.get('analyzedInstructions', [])
     if analyzed:
@@ -115,16 +147,17 @@ def extreure_instruccions(data):
         for bloc in analyzed:
             for step in bloc.get('steps', []):
                 text = step.get('step', '').strip()
-                if text:
+                if text and _es_pas_valid(text):
                     passos.append({'num': num, 'text': text})
                     num += 1
         if passos:
             return passos
 
+    # Fallback: instruccions en HTML → text pla, partir per punts/salts de línia
     instruccions_html = data.get('instructions', '') or ''
     text_pla = re.sub(r'<[^>]+>', ' ', instruccions_html).strip()
     text_pla = re.sub(r'\s+', ' ', text_pla)
-    if text_pla:
+    if text_pla and _es_pas_valid(text_pla):
         return [{'num': 1, 'text': text_pla}]
 
     return None
@@ -136,12 +169,18 @@ def extreure_instruccions(data):
 # o no aporten valor a la llista de la compra (quantitats mínimes, "to taste"...).
 # Afegeix aquí qualsevol ingredient que vulguis ignorar globalment.
 INGREDIENTS_IGNORATS = {
-    # Genèrics sense valor informatiu
-    'water', 'ice', 'ice water',
+    # Genèrics sense valor informatiu (ice sí, però water NO: pot estar a la BD)
+    'ice', 'ice water',
     # Salses i condiments de marca / molt específics
     'homemade sauce',
     # Descripcions, no ingredients
-    'sauce', 'seasoning', 'spices', 'mixed spices',
+    'sauce', 'seasoning', 'spices', 'mixed spices', 'seasonings',
+    # Fragments de text que no són ingredients reals
+    'or', 'to serve', 'to taste',
+    # Text de blog colat per error
+    'do you love greek salads',
+    # Nota: '. bacon into pieces' i 'lots of pepper' s'han eliminat d'aquí
+    # perquè ara els patrons de neteja els converteixen en 'bacon' i 'pepper'
 }
 
 # Paraules soroll que apareixen als noms d'ingredients de l'API i que
@@ -161,10 +200,16 @@ _SOROLL_PATTERNS = [
     r'or to taste|at room temperature|if needed|optional).*$',
     # Frases amb "to taste" sense coma
     r'\s+to taste$',
-    # Números i fraccions al principi (per si arriba el nom_original)
+    # "lots of X" → X  (ex: "lots of pepper" → "pepper")
+    r'^lots\s+of\s+',
+    # Números i fraccions al principi PRIMER (ex: "2 oz." → "oz.")
     r'^[\d\s/¼½¾⅓⅔⅛⅜⅝⅞]+',
-    # Unitats al principi (per si arriba el nom_original)
-    r'^(teaspoon|tablespoon|cup|ounce|pound|gram|tsp|tbsp|oz|lb|g|ml|liter|l)\b\s*',
+    # Unitats al principi, inclou oz. amb punt (ex: "oz. bacon" → "bacon")
+    r'^(teaspoon|tablespoon|cup|ounce|pound|gram|tsp|tbsp|oz\.?|lb|g|ml|liter|l)\b\.?\s*',
+    # Punt o espais residuals al principi (restes de "oz." → ". bacon" → "bacon")
+    r'^[.\s]+',
+    # "X into pieces/strips/chunks" al final (ex: "bacon into pieces" → "bacon")
+    r'\s+into\s+\w+(\s+\w+)?$',
     # Parèntesis i el seu contingut
     r'\([^)]*\)',
     # Asterisc i el que ve després
@@ -189,9 +234,12 @@ def netejar_nom_ingredient(nom_raw: str) -> str:
     """
     nom = nom_raw.strip()
 
-    # Aplica tots els patrons de soroll
-    for pattern in _SOROLL_RE:
-        nom = pattern.sub(' ', nom)
+    # Dues passades per eliminar restes encadenades
+    # (ex: "2 oz. bacon into pieces" → passa 1: "oz. bacon" → passa 2: "bacon")
+    for _ in range(2):
+        for pattern in _SOROLL_RE:
+            nom = pattern.sub(' ', nom)
+        nom = re.sub(r'\s+', ' ', nom).strip()
 
     # Elimina espais múltiples i caràcters residuals
     nom = re.sub(r'[\s,]+$', '', nom)   # coma o espai al final
@@ -207,14 +255,85 @@ def _carregar_cache_productes():
     cache = []
     for p in Producte.objects.all():
         noms = [p.nom.lower()]
+        # Afegeix sinonims (nou camp)
+        sinonims = (p.sinonims or []) if p.sinonims else []
+        for sin in sinonims:
+            noms.append(sin.lower())
+        # Afegeix alias_api (nom_en i nom_en_query)
         if p.alias_api and isinstance(p.alias_api, dict):
-            # Indexem tant nom_en com nom_en_query (guardat per v4)
             for camp in ('nom_en', 'nom_en_query'):
                 val = p.alias_api.get(camp, '')
                 if val:
                     noms.append(val.lower())
         cache.append((p, noms))
     return cache
+
+
+def buscar_producte_per_audit(nom_original: str, cache: list):
+    """
+    Cerca estricta per a l'audit: NOMÉS cerca exacta i parcial contra
+    sinònims i alias en anglès. NO fa fuzzy ni compara contra noms catalans.
+
+    Estratègia:
+      1. Neteja el nom_original (elimina quantitats, adjectius, etc.)
+      2. Cerca exacta per alias_api i sinònims anglesos
+      3. Cerca parcial NOMÉS si el sinònim del producte és prou llarg (>= 6 chars)
+         i el nom_net el conté exactament com a paraula, no com a subcadena arbitrària.
+         Això evita "pepper" (6c) fent match dins "pepper jack cheese" quan
+         "pepper jack cheese" és el producte correcte.
+
+    Retorna (producte, motiu) o (None, None).
+    """
+    nom_lower = nom_original.lower().strip()
+    nom_net = netejar_nom_ingredient(nom_lower)
+
+    if not nom_net or len(nom_net) < 2:
+        return None, None
+    if nom_net in INGREDIENTS_IGNORATS:
+        return None, None
+
+    # ── Cerca exacta per alias_api (nom_en / nom_en_query) ──────────────────
+    for cerca in (nom_net, nom_lower):
+        p = (
+            Producte.objects.filter(alias_api__nom_en__iexact=cerca).first()
+            or Producte.objects.filter(alias_api__nom_en_query__iexact=cerca).first()
+        )
+        if p:
+            return p, f'alias exacte "{cerca}"'
+
+    # ── Cerca exacta per sinònims (anglesos i catalans) ─────────────────────
+    for producte, noms_producte in cache:
+        for nom_p in noms_producte[1:]:  # [0] és el nom català, saltem-lo
+            for cerca in (nom_net, nom_lower):
+                if cerca == nom_p:
+                    return producte, f'sinònim exacte "{cerca}"'
+
+    # ── Cerca parcial per alias_api (nom_net dins alias) ────────────────────
+    if len(nom_net) >= 4:
+        p = (
+            Producte.objects.filter(alias_api__nom_en__icontains=nom_net).first()
+            or Producte.objects.filter(alias_api__nom_en_query__icontains=nom_net).first()
+        )
+        if p:
+            return p, f'alias parcial "{nom_net}"'
+
+    # ── Cerca parcial per sinònims ───────────────────────────────────────────
+    # Regles per evitar falsos positius:
+    #   - El sinònim del producte ha de tenir >= 6 caràcters (evita "pepper" ⊂ "pepper jack")
+    #   - El sinònim ha d'estar contingut en nom_net (no a l'inrevés)
+    #     Això fa que "pepper jack cheese" trobi "pepperjack cheese" però
+    #     NO que "pepper" trobi "pepper jack cheese"
+    import re as _re
+    if len(nom_net) >= 4:
+        for producte, noms_producte in cache:
+            for nom_p in noms_producte[1:]:  # saltem nom català
+                if len(nom_p) < 8:
+                    continue  # sinònim massa curt, massa propens a falsos positius (ex: "pepper" ⊂ "pepper jack cheese")
+                # El sinònim del producte ha d'estar contingut en el nom netejat
+                if nom_p in nom_net:
+                    return producte, f'sinònim parcial "{nom_p}" ⊂ "{nom_net}"'
+
+    return None, None
 
 
 def buscar_producte(nom_ingredient: str, cache: list, fuzzy_threshold: int = 75):
@@ -361,6 +480,14 @@ class Command(BaseCommand):
                             help='Re-vincula ingredients de totes les receptes existents '
                                  'amb la cache de productes actualitzada. '
                                  'No fa cap crida a l\'API.')
+        parser.add_argument('--audit', action='store_true',
+                            help='Revisa tots els vincles existents i detecta assignacions '
+                                 'sospitoses comparant nom_original amb el producte assignat. '
+                                 'No modifica res.')
+        parser.add_argument('--fix-audit', action='store_true',
+                            help='Com --audit però corregeix automàticament els vincles '
+                                 'sospitosos si troba un producte millor. '
+                                 'Mou els ingredients no resolts a ingredients_no_vinculats.')
 
     def handle(self, *args, **options):
         api_key = options.get('api_key') or os.environ.get('SPOONACULAR_API_KEY')
@@ -376,6 +503,8 @@ class Command(BaseCommand):
         min_ingredients = options['min_ingredients']
         fuzzy_threshold = options['fuzzy_threshold']
         relink = options['relink']
+        audit = options['audit']
+        fix_audit = options['fix_audit']
 
         stats = {'creades': 0, 'actualitzades': 0, 'saltades': 0, 'descartades': 0}
         ids_processats = set()
@@ -387,6 +516,10 @@ class Command(BaseCommand):
 
         if relink:
             self._relink_receptes(cache_productes, fuzzy_threshold, dry_run)
+            return
+
+        if audit or fix_audit:
+            self._audit_vincles(cache_productes, fuzzy_threshold, fix=fix_audit)
             return
 
         self.stdout.write(self.style.SUCCESS(
@@ -459,6 +592,7 @@ class Command(BaseCommand):
                     ingredients_raw = recepta_data.get('extendedIngredients', [])
                     ingredients_vinculats = []
                     ingredients_no_trobats = []
+                    ingredients_no_vinculats_map = {}  # nom_ing → {quantitat, unitat}
 
                     for ing in ingredients_raw:
                         # L'API retorna "name" (nom net) i "original" (amb quantitat i unitat).
@@ -480,9 +614,14 @@ class Command(BaseCommand):
                                 'nom_original': nom_original[:255],
                             })
                         else:
-                            # Guarda el nom net (no l'original) per facilitar la revisió
                             nom_no_trobat = netejar_nom_ingredient(nom_ing) or nom_ing
                             ingredients_no_trobats.append(nom_no_trobat)
+                            # Guarda per poder fer relink sense cridar l'API
+                            if nom_ing not in ingredients_no_vinculats_map:
+                                ingredients_no_vinculats_map[nom_ing] = {
+                                    'quantitat': quantitat_final,
+                                    'unitat': unitat,
+                                }
 
                     if len(ingredients_vinculats) < min_ingredients:
                         self.stdout.write(
@@ -512,6 +651,16 @@ class Command(BaseCommand):
                         stats['creades'] += 1
                         continue
 
+                    # Guarda els ingredients no vinculats per poder fer relink futur
+                    ingredients_no_vinculats_json = [
+                        {
+                            'nom': nom_ing_raw,
+                            'quantitat': ing_raw_data['quantitat'],
+                            'unitat': ing_raw_data['unitat'],
+                        }
+                        for nom_ing_raw, ing_raw_data in ingredients_no_vinculats_map.items()
+                    ]
+
                     existia = Recepta.objects.filter(pk=recepta_id).exists()
                     recepta, _ = Recepta.objects.update_or_create(
                         id_api=recepta_id,
@@ -524,6 +673,7 @@ class Command(BaseCommand):
                             'instruccions': instruccions,
                             'dietes': dietes,
                             'intolerancias': intolerancias,
+                            'ingredients_no_vinculats': ingredients_no_vinculats_json,
                         }
                     )
 
@@ -581,6 +731,9 @@ class Command(BaseCommand):
         self._resum(stats, dry_run, no_trobats_global)
 
     def _relink_receptes(self, cache_productes, fuzzy_threshold, dry_run):
+        # Re-vincula ingredients de totes les receptes sense cridar l'API.
+        # Per poder re-vincular els que mai es van trobar, llegeix el camp
+        # `ingredients_no_vinculats` que es guarda des d'ara a la Recepta.
         from myapp.models import Recepta as R
         no_trobats_global = {}
         total_receptes = 0
@@ -589,37 +742,84 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("🔗 Mode relink — sense crides a l'API\n"))
 
-        for recepta in R.objects.prefetch_related('ingredientrecepta_set__producte').all():
+        total_receptes_bd = R.objects.count()
+
+        for i, recepta in enumerate(
+            R.objects.prefetch_related('ingredientrecepta_set__producte').all(), start=1
+        ):
+            self.stdout.write(f'\n[{i}/{total_receptes_bd}] 🍽️  "{recepta.nom}"')
+
             ingredients_actuals = list(
                 recepta.ingredientrecepta_set.select_related('producte').all()
             )
-
             ingredients_nous = []
             ingredients_no_trobats = []
+            nous_vincles_detall = []  # ingredients nous trobats en aquest relink
 
+            # ── Conserva els que ja estaven vinculats (sense re-cercar) ──────
+            # No cal tornar a fer buscar_producte: ja estan vinculats correctament.
+            # Re-cercar-los amb nom_original llarg ("2 large eggs at room temp")
+            # causaria falsos no-trobats.
             for ing in ingredients_actuals:
-                nom_original = ing.nom_original or ing.producte.nom
+                ingredients_nous.append({
+                    'producte': ing.producte,
+                    'quantitat': ing.quantitat,
+                    'unitat': ing.unitat,
+                    'nom_original': ing.nom_original,
+                })
+
+            # ── Intenta vincular els que NO es van trobar inicialment ─────────
+            # Aquests sí que cal cercar-los perquè ara potser tenim nous productes
+            # o sinonims que abans no existien.
+            no_vinculats = recepta.ingredients_no_vinculats or []
+            self.stdout.write(
+                f'   Ing. actuals: {len(ingredients_actuals)} | '
+                f'Pendent vincular: {len(no_vinculats)}'
+            )
+
+            for item in no_vinculats:
+                nom_original = item.get('nom', '')
+                if not nom_original:
+                    continue
                 producte_nou = buscar_producte(nom_original, cache_productes, fuzzy_threshold)
                 if producte_nou:
                     ingredients_nous.append({
                         'producte': producte_nou,
-                        'quantitat': ing.quantitat,
-                        'unitat': ing.unitat,
-                        'nom_original': ing.nom_original,
+                        'quantitat': item.get('quantitat', 1.0),
+                        'unitat': item.get('unitat', 'unitat'),
+                        'nom_original': nom_original,
                     })
+                    nous_vincles_detall.append((nom_original, producte_nou.nom))
                 else:
-                    nom_no_trobat = netejar_nom_ingredient(nom_original) or nom_original
-                    ingredients_no_trobats.append(nom_no_trobat)
+                    ingredients_no_trobats.append(nom_original)
+
+            # ── Informa dels nous vincles trobats ──────────────────────────────
+            if nous_vincles_detall:
+                self.stdout.write(
+                    self.style.SUCCESS(f'   ✅ {len(nous_vincles_detall)} nous vincles:')
+                )
+                for nom_ing, nom_prod in nous_vincles_detall:
+                    self.stdout.write(
+                        self.style.SUCCESS(f'      + "{nom_ing}" → {nom_prod}')
+                    )
+            if ingredients_no_trobats:
+                self.stdout.write(
+                    f'   ⚠️  Encara sense vincle: '
+                    f'{", ".join(ingredients_no_trobats[:5])}'
+                    + (' ...' if len(ingredients_no_trobats) > 5 else '')
+                )
 
             if ingredients_no_trobats:
                 _registrar_no_trobats(
                     no_trobats_global, recepta.nom, recepta.id_api, ingredients_no_trobats
                 )
 
+            ids_actuals = {ing.producte_id for ing in ingredients_actuals}
+            ids_nous = {d['producte'].pk for d in ingredients_nous}
+            hi_ha_canvis = ids_actuals != ids_nous
+
             if not dry_run:
-                ids_actuals = {ing.producte_id for ing in ingredients_actuals}
-                ids_nous = {d['producte'].pk for d in ingredients_nous}
-                if ids_actuals != ids_nous:
+                if hi_ha_canvis:
                     vistos = set()
                     finals = []
                     for d in ingredients_nous:
@@ -634,7 +834,33 @@ class Command(BaseCommand):
                             unitat=d['unitat'],
                             nom_original=d['nom_original'],
                         )
+                    # Actualitza el camp: elimina els que ja s'han pogut vincular
+                    nous_no_vinculats = [
+                        item for item in no_vinculats
+                        if item.get('nom', '') in ingredients_no_trobats
+                    ]
+                    recepta.ingredients_no_vinculats = nous_no_vinculats
+                    recepta.save(update_fields=['ingredients_no_vinculats'])
                     total_nous_vincles += 1
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f'   💾 Guardat — total ing: {len(finals)}'
+                        )
+                    )
+                else:
+                    self.stdout.write('   ↩️  Sense canvis, no cal guardar')
+            else:
+                # dry_run: informa del que es faria
+                if hi_ha_canvis:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f'   [DRY] S\'actualitzaria: {len(ids_nous)} ing '
+                            f'(abans {len(ids_actuals)})'
+                        )
+                    )
+                    total_nous_vincles += 1
+                else:
+                    self.stdout.write('   [DRY] Sense canvis')
 
             total_receptes += 1
             total_no_trobats += len(ingredients_no_trobats)
@@ -651,6 +877,143 @@ class Command(BaseCommand):
             f'  ⚠️  {total_no_trobats} ingredients encara no trobats\n'
             f'     → Consulta {INGREDIENTS_NO_TROBATS_PATH} per revisar-los\n'
         )
+
+
+    def _audit_vincles(self, cache_productes, fuzzy_threshold, fix=False):
+        """
+        Revisa tots els IngredientRecepta existents i detecta assignacions sospitoses:
+        el nom_original netejat no coincideix prou amb el producte assignat.
+
+        Si fix=True, corregeix automaticament:
+          - Si troba un producte millor -> reassigna
+          - Si no en troba cap -> mou a ingredients_no_vinculats de la recepta
+        """
+        from thefuzz import fuzz
+        from myapp.models import IngredientRecepta
+
+        MODE = "\U0001f527 Fix-audit" if fix else "\U0001f50d Audit"
+        self.stdout.write(self.style.SUCCESS(f"{MODE} — revisant vincles existents\n"))
+
+        LLINDAR_ACCEPTABLE = 50
+        total = 0
+        sospitosos = 0
+        corregits = 0
+        saltats_fix = 0  # ingredients que tenia alternativa però has dit que no
+        eliminats = 0
+
+        tots = (
+            IngredientRecepta.objects
+            .select_related("recepta", "producte")
+            .all()
+        )
+        n_total = tots.count()
+
+        for ing in tots.iterator():
+            total += 1
+            nom_original = ing.nom_original or ""
+            nom_net = netejar_nom_ingredient(nom_original) or nom_original.lower().strip()
+            nom_producte = ing.producte.nom.lower()
+
+            score_actual = max(
+                fuzz.token_set_ratio(nom_net, nom_producte),
+                fuzz.token_set_ratio(nom_net, nom_producte.split()[0]),
+            )
+            sinonims = [s.lower() for s in (ing.producte.sinonims or [])]
+            for sin in sinonims:
+                score_actual = max(score_actual, fuzz.token_set_ratio(nom_net, sin))
+
+            if score_actual >= LLINDAR_ACCEPTABLE:
+                continue
+
+            sospitosos += 1
+            # Usa cerca estricta (només sinònims/alias anglesos, sense fuzzy català)
+            # per evitar falsos positius com "pepper" → "Pepperoni"
+            producte_millor, motiu_millor = buscar_producte_per_audit(nom_original, cache_productes)
+
+            if producte_millor and producte_millor.pk != ing.producte_id:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  \u26a0\ufe0f  [{ing.recepta.nom[:40]}]\n"
+                        f"      nom_original: \"{nom_original}\"\n"
+                        f"      assignat:     {ing.producte.nom!r} (score={score_actual})\n"
+                        f"      millor:       {producte_millor.nom!r} ({motiu_millor})"
+                    )
+                )
+                if fix:
+                    resposta = input(
+                        f"      Confirmes canviar a {producte_millor.nom!r}? (s/n): "
+                    ).strip().lower()
+                    if resposta == 's':
+                        ja_existeix = IngredientRecepta.objects.filter(
+                            recepta=ing.recepta, producte=producte_millor
+                        ).exists()
+                        if ja_existeix:
+                            ing.delete()
+                            self.stdout.write(
+                                self.style.SUCCESS(
+                                    f"      ✓ Eliminat (ja hi havia {producte_millor.nom})"
+                                )
+                            )
+                        else:
+                            ing.producte = producte_millor
+                            ing.save(update_fields=["producte"])
+                            self.stdout.write(
+                                self.style.SUCCESS(f"      ✓ Corregit a {producte_millor.nom!r}")
+                            )
+                        corregits += 1
+                    else:
+                        self.stdout.write(f"      ⊘ Saltat")
+                        saltats_fix += 1
+
+            elif not producte_millor:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  \u26a0\ufe0f  [{ing.recepta.nom[:40]}]\n"
+                        f"      nom_original: \"{nom_original}\"\n"
+                        f"      assignat:     {ing.producte.nom!r} (score={score_actual})\n"
+                        f"      millor:       (cap producte trobat)"
+                    )
+                )
+                if fix:
+                    recepta = ing.recepta
+                    no_vinculats = recepta.ingredients_no_vinculats or []
+                    noms_ja = {i.get("nom", "") for i in no_vinculats}
+                    if nom_original not in noms_ja:
+                        no_vinculats.append({
+                            "nom": nom_original,
+                            "quantitat": ing.quantitat,
+                            "unitat": ing.unitat,
+                        })
+                        recepta.ingredients_no_vinculats = no_vinculats
+                        recepta.save(update_fields=["ingredients_no_vinculats"])
+                    ing.delete()
+                    self.stdout.write(
+                        self.style.SUCCESS("      \u2192 Mogut a ingredients_no_vinculats")
+                    )
+                    eliminats += 1
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  \u26a0\ufe0f  [{ing.recepta.nom[:40]}] \"{nom_original}\" \u2192 "
+                        f"{ing.producte.nom!r} (score={score_actual}, sense alternativa)"
+                    )
+                )
+
+        self.stdout.write(self.style.SUCCESS(f"\n\u2705 Audit fet!"))
+        self.stdout.write(
+            f"\n\U0001f4ca Resum:\n"
+            f"  \U0001f517 {total}/{n_total} vincles revisats\n"
+            f"  \u26a0\ufe0f  {sospitosos} sospitosos (score < {LLINDAR_ACCEPTABLE})\n"
+        )
+        if fix:
+            self.stdout.write(
+                f"  \u2705 {corregits} corregits\n"
+                f"  \U0001f5d1\ufe0f  {eliminats} moguts a no_vinculats\n"
+            )
+        else:
+            self.stdout.write(
+                "  \u2192 Executa --fix-audit per corregir-los automaticament\n"
+            )
 
     def _resum(self, stats, dry_run, no_trobats_global):
         if not dry_run:
