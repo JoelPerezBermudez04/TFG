@@ -19,19 +19,20 @@ RECIPE_QUERIES = [
     "risotto mushroom", "paella", "fried rice",
     # Carns
     "chicken curry", "roast chicken", "chicken stir fry",
-    "beef stew", "beef burger", "meatballs tomato sauce",
-    "pork tenderloin", "lamb chops",
+    #"beef stew", "beef burger", "meatballs tomato sauce",
+    "pork tenderloin", #"lamb chops",
     # Peix
-    "salmon fillet", "tuna salad", "shrimp garlic", "baked cod",
+    "salmon fillet", #"tuna salad", "shrimp garlic", "baked cod",
     # Vegetarians
     "vegetable soup", "lentil soup", "chickpea curry", "vegetable stir fry",
-    "caprese salad", "greek salad", "guacamole", "hummus",
+    "caprese salad", #"greek salad", 
+    #"guacamole", "hummus",
     # Ous i làctics
-    "omelette", "scrambled eggs", "frittata", "quiche",
+    #"omelette", "scrambled eggs", "frittata", "quiche",
     # Sopes i cremes
-    "tomato soup", "minestrone", "gazpacho", "potato soup",
+    "tomato soup", "minestrone", "gazpacho", #"potato soup",
     # Postres
-    "chocolate cake", "pancakes", "banana bread", "apple pie",
+    #"chocolate cake", "pancakes", "banana bread", "apple pie",
     # Esmorzars
     "overnight oats", "smoothie bowl", "avocado toast",
     # Snacks i aperitius
