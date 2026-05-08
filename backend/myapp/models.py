@@ -55,13 +55,18 @@ class ProducteInventari(models.Model):
 class Recepta(models.Model):
     id_api = models.CharField(max_length=100, primary_key=True)
     nom = models.CharField(max_length=255)
+    nom_en = models.CharField(max_length=255, blank=True)
     descripcio = models.TextField(blank=True)
+    descripcio_en = models.TextField(blank=True)
     imatge_url = models.URLField()
     temps_preparacio = models.IntegerField()
     porcions = models.IntegerField(default=1)
     instruccions = models.JSONField(blank=True, null=True)
+    instruccions_en = models.JSONField(blank=True, null=True)
     dietes = models.JSONField(blank=True, null=True)
+    dietes_en = models.JSONField(blank=True, null=True)
     intolerancias = models.JSONField(blank=True, null=True)
+    intolerancias_en = models.JSONField(blank=True, null=True)
     ingredients_no_vinculats = models.JSONField(blank=True, null=True)
 
     def __str__(self):
