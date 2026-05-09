@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from google.oauth2 import id_token
@@ -406,11 +407,35 @@ class ReceptaViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        return Response(ReceptaSerializer(Recepta.objects.all(), many=True).data)
+        qs = Recepta.objects.prefetch_related('ingredientrecepta_set').all()
+        dieta = request.query_params.get('dieta')
+        intolerancia = request.query_params.get('intolerancia')
+        max_temps = request.query_params.get('max_temps')
+
+        if dieta:
+            qs = qs.filter(dietes__contains=dieta)
+        if intolerancia:
+            qs = qs.filter(intolerancias__contains=intolerancia)
+        if max_temps:
+            try:
+                qs = qs.filter(temps_preparacio__lte=int(max_temps))
+            except ValueError:
+                return Response(
+                    {'error': 'max_temps ha de ser un número enter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = 20
+        paginator.max_limit = 100
+
+        page = paginator.paginate_queryset(qs, request)
+        serializer = ReceptaResumSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk=None):
         try:
-            recepta = Recepta.objects.get(pk=pk)
+            recepta = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').get(pk=pk)
         except Recepta.DoesNotExist:
             return Response({'error': 'No trobada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceptaSerializer(recepta).data)
@@ -427,12 +452,18 @@ class FavoritViewSet(ViewSet):
         serializer = FavoritSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(usuari=request.user)
+        try:
+            serializer.save(usuari=request.user)
+        except Exception:
+            return Response(
+                {'error': 'Aquesta recepta ja és als favorits.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk=None):
         try:
-            favorit = Favorit.objects.get(pk=pk, usuari=request.user)
+            favorit = Favorit.objects.get(recepta_id=pk, usuari=request.user)
         except Favorit.DoesNotExist:
             return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
         favorit.delete()
