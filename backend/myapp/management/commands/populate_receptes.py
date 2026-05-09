@@ -15,41 +15,42 @@ INGREDIENTS_NO_TROBATS_PATH = Path('ingredients_no_trobats.json')
 
 RECIPE_QUERIES = [
     # Pasta i arròs
-    "pasta carbonara", "pasta bolognese", "pasta arrabiata",
-    "risotto mushroom", "paella", "fried rice",
+    #"pasta carbonara", "pasta bolognese", "pasta arrabiata",
+    #"risotto mushroom", "paella", "fried rice",
     # Carns
-    "chicken curry", "roast chicken", "chicken stir fry",
+    #"chicken curry", "roast chicken", "chicken stir fry",
     #"beef stew", "beef burger", "meatballs tomato sauce",
-    "pork tenderloin", #"lamb chops",
+    #"pork tenderloin", "lamb chops",
     # Peix
-    "salmon fillet", #"tuna salad", "shrimp garlic", "baked cod",
+    #"salmon fillet", "tuna salad", "shrimp garlic", "baked cod",
     # Vegetarians
-    "vegetable soup", "lentil soup", "chickpea curry", "vegetable stir fry",
-    "caprese salad", #"greek salad", 
+    #"vegetable soup", "lentil soup", "chickpea curry", "vegetable stir fry",
+    #"caprese salad", "greek salad", 
     #"guacamole", "hummus",
     # Ous i làctics
     #"omelette", "scrambled eggs", "frittata", "quiche",
     # Sopes i cremes
-    "tomato soup", "minestrone", "gazpacho", #"potato soup",
+    #"tomato soup", "minestrone", "gazpacho", "potato soup",
     # Postres
     #"chocolate cake", "pancakes", "banana bread", "apple pie",
     # Esmorzars
     #"overnight oats", "smoothie bowl", "avocado toast",
     # Snacks i aperitius
     #"bruschetta", "spring rolls", "nachos",
-    #  ── Receptes catalanes ──────────────────────────────────────────
-    "escalivada", "pa amb tomàquet", "esqueixada", "botifarra",
-    "calcots", "coca de recapte", "fideuà", "crema catalana",
-    "suquet de peix", "conill a la xocolata", "mongetes amb botifarra",
-    "pan con tomate", "escalivada amb botifarra",
-    # ── Receptes espanyoles ──────────────────────────────────────────
-    "gazpacho andaluz", "salmorejo", "espinacas con garbanzos",
-    "bacalao a la vizcaina", "caldo gallego", "pulpo a la gallega",
-    "rabo de toro", "pan tumaca", "jamón ibérico",
-    "chorizo a la sidra", "fabada asturiana", "morcilla",
-    "croquetas jamón", "patatas bravas", "ali oli",
-    "esqueixada", "espaguetis a banda", "arroz a banda",
-    "all i pebre", "esgarraet", "buñuelos", "torrijas",
+    # ── Receptes catalanes (equivalents en anglès) ───────────────────
+    #"roasted vegetables", "tomato bread", "catalan salad",
+    #"sausage and beans", "seafood pasta", "catalonian dessert",
+    #"creamy custard tart", "fish stew", "rabbit chocolate",
+    #"white beans sausage",
+    # ── Receptes espanyoles (equivalents en anglès) ──────────────────
+    #"gazpacho", "cold spanish soup", "spinach chickpeas",
+    #"cod spanish", "galician broth", "octopus galician",
+    #"spanish stew", "spanish ham", "chorizo cider",
+    #"asturian bean stew", "spanish sausage", "blood sausage",
+    #"ham croquettes", 
+    "fried potatoes spicy", "garlic mayonnaise",
+    "spanish seafood rice", "seafood paella", "braised spanish",
+    "stuffed pastries", "fried bread dessert",
 ]
  
 # ── Unitats ───────────────────────────────────────────────────────────────────

@@ -38,8 +38,13 @@ class Command(BaseCommand):
         elif force:
             receptes = Recepta.objects.all()
         else:
-            # Salta les que ja tenen traducció (nom_en omplert = ja traduïdes)
-            receptes = Recepta.objects.filter(nom_en='')
+            # Salta les que ja estan traduïdes.
+            # Una recepta NO està traduïda si nom == nom_en (tots dos en anglès)
+            # o si nom_en és buit (receptes carregades abans d'afegir el camp).
+            from django.db.models import Q, F
+            receptes = Recepta.objects.filter(
+                Q(nom_en='') | Q(nom=F('nom_en'))
+            )
 
         if not receptes.exists():
             self.stdout.write('Cap recepta per traduir.')

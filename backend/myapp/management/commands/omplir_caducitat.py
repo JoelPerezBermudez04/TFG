@@ -2,7 +2,7 @@
 Script per inserir dies_caducitat_aprox a tots els productes.
 Execució:
     pip install psycopg2-binary python-dotenv
-    python inserir_caducitat.py
+    python omplir_caducitat.py
 """
 import os
 import psycopg2
@@ -717,6 +717,84 @@ DIES_CADUCITAT = {
     938: 7,      # Tomàquet pruna
     939: 7,      # Savi (herba fresca)
     940: 7,      # Anet (herba fresca)
+    # Nous productes (941-1019)
+    941: 730,    # Linguine (pasta seca)
+    942: 730,    # Penne (pasta seca)
+    943: 730,    # Orecchiette (pasta seca)
+    944: 730,    # Farina de blat de moro (cornflour)
+    945: 730,    # Grits
+    946: 5,      # Tofu extraferm (fresc)
+    947: 730,    # Splenda
+    948: 730,    # Pasta de vainilla
+    949: 730,    # Vaina de vainilla
+    950: 730,    # Extracte d'ametlla
+    951: 730,    # Salsa tabasco
+    952: 365,    # Mirin
+    953: 365,    # Vermut
+    954: 730,    # Oli de canola
+    955: 180,    # Vinagreta
+    956: 365,    # Relish
+    957: 365,    # Cogombrets en vinagre
+    958: 180,    # Pasta de curry
+    959: 730,    # Cubets de brou de vedella
+    960: 730,    # Condiment per a marisc
+    961: 730,    # Old Bay seasoning
+    962: 730,    # Vegeta (condiment)
+    963: 730,    # Llavors de fenigrec
+    964: 730,    # Cúrcuma
+    965: 730,    # Asafètida
+    966: 730,    # Safrà
+    967: 730,    # Llavors de cànem
+    968: 730,    # Herbes aromàtiques
+    969: 730,    # Condiment genèric
+    970: 7,      # Ceballots (frescos)
+    971: 7,      # Endívia belga (fresca)
+    972: 14,     # Tomatillo
+    973: 5,      # Panolles de blat de moro baby
+    974: 30,     # Nyames
+    975: 14,     # Patates Yukon Gold
+    976: 14,     # Patates noves
+    977: 5,      # Microverds (frescos)
+    978: 5,      # Ruca (fresca)
+    979: 5,      # Brots de pèsol (frescos)
+    980: 7,      # Taronges Cara Cara
+    981: 3,      # Carn de vedella per guisar (fresca)
+    982: 3,      # Pollastre per rostir (fresc)
+    983: 5,      # Pernil cuit
+    984: 2,      # Vieres (fresques)
+    985: 2,      # Gambes grans (fresques)
+    986: 180,    # Ghee (clarificat)
+    987: 14,     # Formatge Pepper Jack
+    988: 7,      # Tzatziki
+    989: 7,      # Panets d'hamburguesa
+    990: 30,     # Croutons
+    991: 3,      # Massa per quiche (fresca)
+    992: 3,      # Base de pasta (fresca)
+    993: 730,    # Nèctar d'atzavara
+    994: 730,    # Estèvia
+    995: 365,    # Salsa de xili
+    996: 180,    # Nuoc cham
+    997: 14,     # Bitxos llargs (frescos)
+    998: 7,      # Half-and-half (llet i nata)
+    999: 730,    # Brandy
+    1000: 180,   # Salsa marinara
+    1001: 365,   # Peperoncini
+    1002: 21,    # Xirivia (fresca)
+    1003: 14,    # Fonoll (fresc)
+    1004: 3,     # Tilàpia (fresca)
+    1005: 730,   # Llevat sec
+    1006: 30,    # Xips de truita de blat de moro
+    1007: 30,    # Truites fregides al forn
+    1008: 30,    # Cullerades de truita xips
+    1009: 30,    # Doritos de formatge nacho
+    1010: 30,    # Xips de truita de tres colors
+    1011: 180,   # Embolcalls de rotlle de primavera
+    1012: 3,     # Croissant (fresc)
+    1013: 3,     # Croissant sense gluten (fresc)
+    1014: 365,   # Harissa
+    1015: 730,   # Aigua amb gas
+    1017: 3,     # 95% vedella mòlta magra (fresca)
+    1019: 14,    # Poma mcintosh
 }
 
 def main():
