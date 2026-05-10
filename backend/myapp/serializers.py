@@ -2,6 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import Usuari, Categoria, Producte, ProducteInventari, Recepta, IngredientRecepta, Favorit, ItemCompra
 
+PRODUCTE_NOM_SOURCE = 'producte.nom'
+
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,7 +70,7 @@ class EditarUsuariSerializer(serializers.ModelSerializer):
 
 
 class ProducteInventariSerializer(serializers.ModelSerializer):
-    producte_nom = serializers.CharField(source='producte.nom', read_only=True)
+    producte_nom = serializers.CharField(source=PRODUCTE_NOM_SOURCE, read_only=True)
     producte_emoji = serializers.CharField(source='producte.emoji', read_only=True)
     producte_imatge_url = serializers.URLField(source='producte.imatge_url', read_only=True)
     producte_categoria_id = serializers.IntegerField(source='producte.categoria.id', read_only=True)
@@ -95,7 +97,7 @@ class ProducteInventariEditSerializer(serializers.ModelSerializer):
 
 
 class IngredientReceptaSerializer(serializers.ModelSerializer):
-    producte_nom = serializers.CharField(source='producte.nom', read_only=True)
+    producte_nom = serializers.CharField(source=PRODUCTE_NOM_SOURCE, read_only=True)
     producte_emoji = serializers.CharField(source='producte.emoji', read_only=True)
     producte_imatge_url = serializers.URLField(source='producte.imatge_url', read_only=True)
 
@@ -154,7 +156,7 @@ class FavoritSerializer(serializers.ModelSerializer):
 
 
 class ItemCompraSerializer(serializers.ModelSerializer):
-    producte_nom = serializers.CharField(source='producte.nom', read_only=True)
+    producte_nom = serializers.CharField(source=PRODUCTE_NOM_SOURCE, read_only=True)
 
     class Meta:
         model = ItemCompra

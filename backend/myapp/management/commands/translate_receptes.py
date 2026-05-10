@@ -140,4 +140,4 @@ def traduir(text: str, translator) -> str:
     try:
         return translator.translate(text) or text
     except Exception as e:
-        raise Exception(f"Error traduint '{text[:50]}': {e}")
+        raise ValueError(f"Error traduint '{text[:50]}': {e}")
