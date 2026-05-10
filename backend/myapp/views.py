@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from google.oauth2 import id_token
@@ -10,9 +11,10 @@ from google.auth.transport import requests as google_requests
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from .models import *
-from .serializers import *
+from .models import Usuari, Categoria, Producte, ProducteInventari, Recepta, IngredientRecepta, Favorit, ItemCompra
+from .serializers import CategoriaSerializer, ProducteSerializer, ProducteCreateUpdateSerializer, UsuariSerializer, RegistreSerializer, EditarUsuariSerializer, ProducteInventariSerializer, ProducteInventariEditSerializer, ReceptaResumSerializer, ReceptaSerializer, FavoritSerializer, ItemCompraSerializer
 
+NOT_FOUND_ERROR = 'No trobat.'
 
 def get_tokens(user):
     refresh = RefreshToken.for_user(user)
@@ -247,7 +249,7 @@ class ProducteViewSet(ViewSet):
         try:
             producte = Producte.objects.select_related('categoria').get(pk=pk)
         except Producte.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         return Response(ProducteSerializer(producte).data)
 
     def create(self, request):
@@ -261,7 +263,7 @@ class ProducteViewSet(ViewSet):
         try:
             producte = Producte.objects.get(pk=pk)
         except Producte.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProducteCreateUpdateSerializer(producte, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -272,7 +274,7 @@ class ProducteViewSet(ViewSet):
         try:
             producte = Producte.objects.get(pk=pk)
         except Producte.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         producte.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -295,7 +297,7 @@ class ProducteInventariViewSet(ViewSet):
         try:
             item = ProducteInventari.objects.select_related('producte').get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         return Response(ProducteInventariSerializer(item).data)
 
     def create(self, request):
@@ -309,7 +311,7 @@ class ProducteInventariViewSet(ViewSet):
         try:
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProducteInventariEditSerializer(item, data=request.data, partial=False)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -320,7 +322,7 @@ class ProducteInventariViewSet(ViewSet):
         try:
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         serializer = ProducteInventariEditSerializer(item, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -331,7 +333,7 @@ class ProducteInventariViewSet(ViewSet):
         try:
             item = ProducteInventari.objects.get(pk=pk, usuari=request.user)
         except ProducteInventari.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
@@ -375,7 +377,7 @@ class ItemCompraViewSet(ViewSet):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
         except ItemCompra.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         serializer = ItemCompraSerializer(item, data=request.data, partial=False)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -386,7 +388,7 @@ class ItemCompraViewSet(ViewSet):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
         except ItemCompra.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         serializer = ItemCompraSerializer(item, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -397,7 +399,7 @@ class ItemCompraViewSet(ViewSet):
         try:
             item = ItemCompra.objects.get(pk=pk, usuari=request.user)
         except ItemCompra.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -406,13 +408,37 @@ class ReceptaViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        return Response(ReceptaSerializer(Recepta.objects.all(), many=True).data)
+        qs = Recepta.objects.prefetch_related('ingredientrecepta_set').all()
+        dieta = request.query_params.get('dieta')
+        intolerancia = request.query_params.get('intolerancia')
+        max_temps = request.query_params.get('max_temps')
+
+        if dieta:
+            qs = qs.filter(dietes__contains=dieta)
+        if intolerancia:
+            qs = qs.filter(intolerancias__contains=intolerancia)
+        if max_temps:
+            try:
+                qs = qs.filter(temps_preparacio__lte=int(max_temps))
+            except ValueError:
+                return Response(
+                    {'error': 'max_temps ha de ser un número enter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = 20
+        paginator.max_limit = 100
+
+        page = paginator.paginate_queryset(qs, request)
+        serializer = ReceptaResumSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk=None):
         try:
-            recepta = Recepta.objects.get(pk=pk)
+            recepta = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').get(pk=pk)
         except Recepta.DoesNotExist:
-            return Response({'error': 'No trobada.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceptaSerializer(recepta).data)
 
 
@@ -427,14 +453,20 @@ class FavoritViewSet(ViewSet):
         serializer = FavoritSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save(usuari=request.user)
+        try:
+            serializer.save(usuari=request.user)
+        except Exception:
+            return Response(
+                {'error': 'Aquesta recepta ja és als favorits.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def destroy(self, request, pk=None):
         try:
-            favorit = Favorit.objects.get(pk=pk, usuari=request.user)
+            favorit = Favorit.objects.get(recepta_id=pk, usuari=request.user)
         except Favorit.DoesNotExist:
-            return Response({'error': 'No trobat.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
         favorit.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 from django.http import JsonResponse
-from myapp.views import *
+from myapp.views import UsuariViewSet, ProducteViewSet, CategoriaViewSet, ProducteInventariViewSet, ItemCompraViewSet, ReceptaViewSet, FavoritViewSet, RecomanacioViewSet
 
 router = DefaultRouter()
 
