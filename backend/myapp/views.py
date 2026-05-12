@@ -415,11 +415,12 @@ class ReceptaViewSet(ViewSet):
         dieta = request.query_params.get('dieta')
         intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
+        producte = request.query_params.get('producte')
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
         if intolerancia:
-            qs = qs.filter(intolerancias__contains=intolerancia)
+            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -428,20 +429,29 @@ class ReceptaViewSet(ViewSet):
                     {'error': 'max_temps ha de ser un número enter.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        if producte:
+            try:
+                qs = qs.filter(
+                    ingredientrecepta__producte_id=int(producte)
+                ).distinct()
+            except ValueError:
+                return Response(
+                    {'error': 'producte ha de ser un ID enter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         paginator = LimitOffsetPagination()
         paginator.default_limit = 20
         paginator.max_limit = 100
 
         page = paginator.paginate_queryset(qs, request)
-        serializer = ReceptaResumSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(ReceptaResumSerializer(page, many=True).data)
 
     def retrieve(self, request, pk=None):
         try:
             recepta = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').get(pk=pk)
         except Recepta.DoesNotExist:
-            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'No trobada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceptaSerializer(recepta).data)
 
 
@@ -507,15 +517,25 @@ def _calcular_score(ingredients_recepta, inventari_ids, caducitat_per_producte, 
  
 class RecomanacioViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
- 
+
     def list(self, request):
-        inventari_qs = (
-            ProducteInventari.objects
-            .filter(usuari=request.user)
-            .values('producte_id', 'data_caducitat')
-        )
- 
-        caducitat_per_producte: dict = {}
+        productes_param = request.query_params.get('productes')
+
+        inventari_qs = ProducteInventari.objects.filter(
+            usuari=request.user
+        ).values('producte_id', 'data_caducitat')
+
+        if productes_param:
+            try:
+                ids_seleccionats = {int(i) for i in productes_param.split(',') if i.strip()}
+            except ValueError:
+                return Response(
+                    {'error': 'productes ha de ser una llista d\'IDs enters separats per comes (ex: 1,2,3).'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            inventari_qs = inventari_qs.filter(producte_id__in=ids_seleccionats)
+
+        caducitat_per_producte = {}
         for item in inventari_qs:
             pid  = item['producte_id']
             data = item['data_caducitat']
@@ -525,18 +545,17 @@ class RecomanacioViewSet(ViewSet):
                 existent = caducitat_per_producte[pid]
                 if existent is None or data < existent:
                     caducitat_per_producte[pid] = data
- 
+
         inventari_ids = set(caducitat_per_producte.keys())
- 
-        qs = Recepta.objects.prefetch_related(
-            'ingredientrecepta_set__producte'
-        ).all()
- 
+        dies_urgencia = request.user.dies_avis_caducitat
+        avui = timezone.now().date()
+        qs = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').all()
         dieta = request.query_params.get('dieta')
         intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
         nomes_inv = request.query_params.get('nomes_inventari', 'false').lower() == 'true'
- 
+        nomes_urg = request.query_params.get('nomes_urgents',   'false').lower() == 'true'
+
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
         if intolerancia:
@@ -550,22 +569,32 @@ class RecomanacioViewSet(ViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         resultats = []
- 
+
         for recepta in qs:
             ings = list(recepta.ingredientrecepta_set.all())
- 
             if not ings:
                 continue
- 
-            score, coberts = _calcular_score(ings, inventari_ids, caducitat_per_producte, dies_urgencia=request.user.dies_avis_caducitat)
- 
+
+            score, coberts = _calcular_score(
+                ings, inventari_ids, caducitat_per_producte, dies_urgencia
+            )
+
             if nomes_inv and coberts < len(ings):
                 continue
- 
-            avui = timezone.now().date()
+
+            if nomes_urg:
+                te_urgent = any(
+                    ing.producte_id in inventari_ids
+                    and caducitat_per_producte.get(ing.producte_id) is not None
+                    and (caducitat_per_producte[ing.producte_id] - avui).days <= dies_urgencia
+                    for ing in ings
+                )
+                if not te_urgent:
+                    continue
+
             detall_ings = []
             for ing in ings:
-                pid = ing.producte_id
+                pid      = ing.producte_id
                 data_cad = caducitat_per_producte.get(pid)
                 dies_cad = (data_cad - avui).days if data_cad else None
                 detall_ings.append({
@@ -577,7 +606,7 @@ class RecomanacioViewSet(ViewSet):
                     'al_inventari' : pid in inventari_ids,
                     'dies_caducitat' : dies_cad,
                 })
- 
+
             resultats.append({
                 'id_api' : recepta.id_api,
                 'nom' : recepta.nom,
@@ -591,12 +620,11 @@ class RecomanacioViewSet(ViewSet):
                 'total_ingredients' : len(ings),
                 'ingredients' : detall_ings,
             })
-            
+
         resultats.sort(key=lambda r: r['score'], reverse=True)
         paginator = LimitOffsetPagination()
         paginator.default_limit = 20
         paginator.max_limit = 100
         page = paginator.paginate_queryset(resultats, request)
- 
-        serializer = RecomanacioSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+
+        return paginator.get_paginated_response(RecomanacioSerializer(page, many=True).data)
