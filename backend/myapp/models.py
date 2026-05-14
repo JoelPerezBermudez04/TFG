@@ -58,7 +58,7 @@ class Recepta(models.Model):
     nom_en = models.CharField(max_length=255, blank=True)
     descripcio = models.TextField(blank=True)
     descripcio_en = models.TextField(blank=True)
-    imatge_url = models.URLField()
+    imatge_url = models.URLField(blank=True, null=True)
     temps_preparacio = models.IntegerField()
     porcions = models.IntegerField(default=1)
     instruccions = models.JSONField(blank=True, null=True)
@@ -74,10 +74,18 @@ class Recepta(models.Model):
 
 
 class IngredientRecepta(models.Model):
+    UNITATS = [
+        ('g', 'grams'),
+        ('kg', 'kilograms'),
+        ('ml', 'mililitres'),
+        ('L', 'litres'),
+        ('unitat', 'unitat'),
+        ('unitats', 'unitats'),
+    ]
     recepta = models.ForeignKey(Recepta, on_delete=models.CASCADE)
     producte = models.ForeignKey(Producte, on_delete=models.CASCADE)
     quantitat = models.FloatField()
-    unitat = models.CharField(max_length=10)
+    unitat = models.CharField(max_length=10, choices=UNITATS)
     nom_original = models.CharField(max_length=255, blank=True)
 
     class Meta:

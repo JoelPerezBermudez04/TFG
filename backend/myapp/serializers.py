@@ -125,7 +125,6 @@ class ReceptaSerializer(serializers.ModelSerializer):
 
 
 class ReceptaResumSerializer(serializers.ModelSerializer):
-    """Serialitzador lleuger sense ingredients ni instruccions, per a llistes i recomanacions."""
     num_ingredients = serializers.SerializerMethodField()
 
     class Meta:
@@ -162,3 +161,27 @@ class ItemCompraSerializer(serializers.ModelSerializer):
         model = ItemCompra
         fields = '__all__'
         read_only_fields = ['usuari', 'data_afegit']
+
+
+class IngredientRecomanacioSerializer(serializers.Serializer):
+    producte_id    = serializers.IntegerField()
+    producte_nom   = serializers.CharField()
+    producte_emoji = serializers.CharField()
+    quantitat      = serializers.FloatField()
+    unitat         = serializers.CharField()
+    al_inventari   = serializers.BooleanField()
+    dies_caducitat = serializers.IntegerField(allow_null=True)
+ 
+ 
+class RecomanacioSerializer(serializers.Serializer):
+    id_api              = serializers.CharField()
+    nom                 = serializers.CharField()
+    imatge_url          = serializers.URLField()
+    temps_preparacio    = serializers.IntegerField()
+    porcions            = serializers.IntegerField()
+    dietes              = serializers.JSONField()
+    intolerancias       = serializers.JSONField()
+    score               = serializers.FloatField()
+    ingredients_coberts = serializers.IntegerField()
+    total_ingredients   = serializers.IntegerField()
+    ingredients         = IngredientRecomanacioSerializer(many=True)

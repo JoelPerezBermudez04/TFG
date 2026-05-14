@@ -11,10 +11,13 @@ from google.auth.transport import requests as google_requests
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from .models import Usuari, Categoria, Producte, ProducteInventari, Recepta, IngredientRecepta, Favorit, ItemCompra
-from .serializers import CategoriaSerializer, ProducteSerializer, ProducteCreateUpdateSerializer, UsuariSerializer, RegistreSerializer, EditarUsuariSerializer, ProducteInventariSerializer, ProducteInventariEditSerializer, ReceptaResumSerializer, ReceptaSerializer, FavoritSerializer, ItemCompraSerializer
+from .models import Usuari, Categoria, Producte, ProducteInventari, Recepta, Favorit, ItemCompra
+from .serializers import CategoriaSerializer, ProducteSerializer, ProducteCreateUpdateSerializer, UsuariSerializer, RegistreSerializer, EditarUsuariSerializer, ProducteInventariSerializer, ProducteInventariEditSerializer, ReceptaResumSerializer, ReceptaSerializer, FavoritSerializer, ItemCompraSerializer, RecomanacioSerializer
 
 NOT_FOUND_ERROR = 'No trobat.'
+
+_MAX_BASE_SCORE      = 0.85
+_MAX_CADUCITAT_BONUS = 0.15
 
 def get_tokens(user):
     refresh = RefreshToken.for_user(user)
@@ -412,11 +415,12 @@ class ReceptaViewSet(ViewSet):
         dieta = request.query_params.get('dieta')
         intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
+        producte = request.query_params.get('producte')
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
         if intolerancia:
-            qs = qs.filter(intolerancias__contains=intolerancia)
+            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -425,20 +429,29 @@ class ReceptaViewSet(ViewSet):
                     {'error': 'max_temps ha de ser un número enter.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        if producte:
+            try:
+                qs = qs.filter(
+                    ingredientrecepta__producte_id=int(producte)
+                ).distinct()
+            except ValueError:
+                return Response(
+                    {'error': 'producte ha de ser un ID enter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         paginator = LimitOffsetPagination()
         paginator.default_limit = 20
         paginator.max_limit = 100
 
         page = paginator.paginate_queryset(qs, request)
-        serializer = ReceptaResumSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(ReceptaResumSerializer(page, many=True).data)
 
     def retrieve(self, request, pk=None):
         try:
             recepta = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').get(pk=pk)
         except Recepta.DoesNotExist:
-            return Response({'error': NOT_FOUND_ERROR}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'No trobada.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ReceptaSerializer(recepta).data)
 
 
@@ -471,8 +484,147 @@ class FavoritViewSet(ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def _calcular_score(ingredients_recepta, inventari_ids, caducitat_per_producte, dies_urgencia):
+    total = len(ingredients_recepta)
+    if total == 0:
+        return 0.0, 0
+
+    coberts = 0
+    max_urgencia = 0.0
+    avui = timezone.now().date()
+
+    for ing in ingredients_recepta:
+        pid = ing.producte_id
+        if pid not in inventari_ids:
+            continue
+
+        coberts += 1
+
+        if dies_urgencia > 0:
+            data_cad = caducitat_per_producte.get(pid)
+            if data_cad is not None:
+                dies_restants = (data_cad - avui).days
+                if dies_restants <= dies_urgencia:
+                    urgencia = max(0, dies_urgencia - dies_restants) / dies_urgencia
+                    max_urgencia = max(max_urgencia, urgencia)
+
+    cobertura_base = (coberts / total) * _MAX_BASE_SCORE
+    bonus_caducitat = max_urgencia * _MAX_CADUCITAT_BONUS
+    score = round(min(cobertura_base + bonus_caducitat, 1.0), 4)
+
+    return score, coberts
+ 
+ 
 class RecomanacioViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        return Response()
+        productes_param = request.query_params.get('productes')
+
+        inventari_qs = ProducteInventari.objects.filter(
+            usuari=request.user
+        ).values('producte_id', 'data_caducitat')
+
+        if productes_param:
+            try:
+                ids_seleccionats = {int(i) for i in productes_param.split(',') if i.strip()}
+            except ValueError:
+                return Response(
+                    {'error': 'productes ha de ser una llista d\'IDs enters separats per comes (ex: 1,2,3).'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            inventari_qs = inventari_qs.filter(producte_id__in=ids_seleccionats)
+
+        caducitat_per_producte = {}
+        for item in inventari_qs:
+            pid  = item['producte_id']
+            data = item['data_caducitat']
+            if pid not in caducitat_per_producte:
+                caducitat_per_producte[pid] = data
+            elif data is not None:
+                existent = caducitat_per_producte[pid]
+                if existent is None or data < existent:
+                    caducitat_per_producte[pid] = data
+
+        inventari_ids = set(caducitat_per_producte.keys())
+        dies_urgencia = request.user.dies_avis_caducitat
+        avui = timezone.now().date()
+        qs = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').all()
+        dieta = request.query_params.get('dieta')
+        intolerancia = request.query_params.get('intolerancia')
+        max_temps = request.query_params.get('max_temps')
+        nomes_inv = request.query_params.get('nomes_inventari', 'false').lower() == 'true'
+        nomes_urg = request.query_params.get('nomes_urgents',   'false').lower() == 'true'
+
+        if dieta:
+            qs = qs.filter(dietes__contains=dieta)
+        if intolerancia:
+            qs = qs.exclude(intolerancias__contains=intolerancia)
+        if max_temps:
+            try:
+                qs = qs.filter(temps_preparacio__lte=int(max_temps))
+            except ValueError:
+                return Response(
+                    {'error': 'max_temps ha de ser un número enter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        resultats = []
+
+        for recepta in qs:
+            ings = list(recepta.ingredientrecepta_set.all())
+            if not ings:
+                continue
+
+            score, coberts = _calcular_score(
+                ings, inventari_ids, caducitat_per_producte, dies_urgencia
+            )
+
+            if nomes_inv and coberts < len(ings):
+                continue
+
+            if nomes_urg:
+                te_urgent = any(
+                    ing.producte_id in inventari_ids
+                    and caducitat_per_producte.get(ing.producte_id) is not None
+                    and (caducitat_per_producte[ing.producte_id] - avui).days <= dies_urgencia
+                    for ing in ings
+                )
+                if not te_urgent:
+                    continue
+
+            detall_ings = []
+            for ing in ings:
+                pid      = ing.producte_id
+                data_cad = caducitat_per_producte.get(pid)
+                dies_cad = (data_cad - avui).days if data_cad else None
+                detall_ings.append({
+                    'producte_id' : pid,
+                    'producte_nom' : ing.producte.nom,
+                    'producte_emoji' : ing.producte.emoji,
+                    'quantitat' : ing.quantitat,
+                    'unitat' : ing.unitat,
+                    'al_inventari' : pid in inventari_ids,
+                    'dies_caducitat' : dies_cad,
+                })
+
+            resultats.append({
+                'id_api' : recepta.id_api,
+                'nom' : recepta.nom,
+                'imatge_url' : recepta.imatge_url,
+                'temps_preparacio' : recepta.temps_preparacio,
+                'porcions' : recepta.porcions,
+                'dietes' : recepta.dietes,
+                'intolerancias' : recepta.intolerancias,
+                'score' : score,
+                'ingredients_coberts' : coberts,
+                'total_ingredients' : len(ings),
+                'ingredients' : detall_ings,
+            })
+
+        resultats.sort(key=lambda r: r['score'], reverse=True)
+        paginator = LimitOffsetPagination()
+        paginator.default_limit = 20
+        paginator.max_limit = 100
+        page = paginator.paginate_queryset(resultats, request)
+
+        return paginator.get_paginated_response(RecomanacioSerializer(page, many=True).data)
