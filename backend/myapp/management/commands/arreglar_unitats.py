@@ -19,8 +19,7 @@ UNITATS_IMPERIALS = {"oz", "lb", "lbs", "tsp", "tbsp", "cup", "cups",
 # ── 1. Convertir IngredientRecepta amb unitats imperials ─────────────────────
 print("🔄 Convertint IngredientRecepta...")
 ingredients_actualitzats = 0
-
-for ing in IngredientRecepta.objects.all():
+for ing in IngredientRecepta.objects.select_related("recepta", "unitat").all():
     if ing.unitat.lower().strip() in UNITATS_IMPERIALS:
         nova_quantitat, nova_unitat = convertir_quantitat(ing.quantitat, ing.unitat)
         print(f"   {ing.recepta.nom[:40]} | {ing.nom_original}: "

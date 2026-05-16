@@ -262,6 +262,47 @@ def convertir_quantitat(quantitat: float, unitat: str) -> tuple[float, str]:
     return quantitat_convertida, unitat_bd
 
 
+def _alias_coincideix(alias, nom_lower: str) -> bool:
+    """Comprova si l'alias (dict, llista o string) conté el nom."""
+    if isinstance(alias, dict):
+        return alias.get("nom_en", "").lower() == nom_lower
+    if isinstance(alias, list):
+        return any(a.lower() == nom_lower for a in alias if isinstance(a, str))
+    if isinstance(alias, str):
+        return alias.lower() == nom_lower
+    return False
+
+
+def _sinonims_coincideixen(sinonims, nom_lower: str) -> bool:
+    """Comprova si la llista de sinònims conté el nom."""
+    if not isinstance(sinonims, list):
+        return False
+    return any(s.lower() == nom_lower for s in sinonims if isinstance(s, str))
+
+
+def _buscar_per_alias(nom_lower: str) -> Producte | None:
+    for producte in Producte.objects.exclude(alias_api=None):
+        if _alias_coincideix(producte.alias_api, nom_lower):
+            return producte
+    return None
+
+
+def _buscar_per_sinonims(nom_lower: str) -> Producte | None:
+    for producte in Producte.objects.exclude(sinonims=None):
+        if _sinonims_coincideixen(producte.sinonims, nom_lower):
+            return producte
+    return None
+
+
+def _buscar_per_nom(nom_lower: str) -> Producte | None:
+    try:
+        return Producte.objects.get(nom__iexact=nom_lower)
+    except Producte.DoesNotExist:
+        pass
+    coincidencies = Producte.objects.filter(nom__icontains=nom_lower)
+    return coincidencies.first() if coincidencies.count() == 1 else None
+
+
 def trobar_producte_per_nom(nom_ingredient: str) -> Producte | None:
     """
     Intenta trobar un Producte de la nostra BD que correspongui
@@ -269,41 +310,11 @@ def trobar_producte_per_nom(nom_ingredient: str) -> Producte | None:
     """
     nom_lower = nom_ingredient.lower().strip()
 
-    # 1. Busca per alias_api: suporta dict {"nom_en": ...} i llista/string legacy
-    for producte in Producte.objects.all():
-        alias = producte.alias_api
-        if not alias:
-            continue
-        if isinstance(alias, dict):
-            nom_en = alias.get("nom_en", "")
-            if nom_en and nom_en.lower() == nom_lower:
-                return producte
-        elif isinstance(alias, list):
-            if any(a.lower() == nom_lower for a in alias if isinstance(a, str)):
-                return producte
-        elif isinstance(alias, str):
-            if alias.lower() == nom_lower:
-                return producte
-
-    # 2. Busca per sinonims (llista de strings)
-    for producte in Producte.objects.exclude(sinonims=None):
-        sinonims = producte.sinonims
-        if isinstance(sinonims, list):
-            if any(s.lower() == nom_lower for s in sinonims if isinstance(s, str)):
-                return producte
-
-    # 3. Busca per nom de producte (traduït)
-    try:
-        return Producte.objects.get(nom__iexact=nom_lower)
-    except Producte.DoesNotExist:
-        pass
-
-    # 4. Busca per contains (menys estricte)
-    coincidencies = Producte.objects.filter(nom__icontains=nom_lower)
-    if coincidencies.count() == 1:
-        return coincidencies.first()
-
-    return None
+    return (
+        _buscar_per_alias(nom_lower)
+        or _buscar_per_sinonims(nom_lower)
+        or _buscar_per_nom(nom_lower)
+    )
 
 
 @transaction.atomic
@@ -331,7 +342,7 @@ def guardar_recepta(info: dict) -> tuple[Recepta, bool]:
 
     # ── Dietes i intoleràncies (en anglès, per traduir més tard) ──
     dietes_en = info.get("diets", [])
-    intolerancias_en = [d for d in info.get("dishTypes", [])]
+    intolerancias_en = list(info.get("dishTypes", []))
 
     recepta = Recepta.objects.create(
         id_api=id_api,
@@ -418,10 +429,39 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         min_receptes = options["min_receptes"]
-        max_punts = options["max_punts"]
-        dry_run = options["dry_run"]
-        compte_inicial = options["compte"]
+        max_punts    = options["max_punts"]
+        dry_run      = options["dry_run"]
 
+        self._escriure_capcalera(min_receptes, max_punts, dry_run)
+
+        client = self._inicialitzar_client(max_punts, dry_run, options["compte"])
+
+        productes_pendents = productes_que_necessiten_mes_receptes(min_receptes)
+        total_pendents     = len(productes_pendents)
+        self._escriure_resum_pendents(productes_pendents, min_receptes)
+
+        if not productes_pendents:
+            self.stdout.write(self.style.SUCCESS("✅ Tots els productes ja tenen prou receptes!"))
+            return
+
+        if dry_run:
+            self._mostrar_dry_run(productes_pendents, min_receptes)
+            return
+
+        receptes_creades, receptes_duplicades, errors = self._processar_lots(
+            productes_pendents, min_receptes, client
+        )
+
+        productes_complets = len(productes_que_necessiten_mes_receptes(min_receptes))
+        self._escriure_resum_final(
+            receptes_creades, receptes_duplicades, errors,
+            productes_complets, total_pendents, client
+        )
+
+
+    # ── Helpers d'inicialització i presentació ───────────────────────────────────
+
+    def _escriure_capcalera(self, min_receptes, max_punts, dry_run):
         self.stdout.write(self.style.SUCCESS(
             f"\n{'='*60}\n"
             f"  fetch_receptes_spoonacular\n"
@@ -432,152 +472,188 @@ class Command(BaseCommand):
             f"{'='*60}\n"
         ))
 
-        # ── Inicialitzar client ──
+
+    def _inicialitzar_client(self, max_punts, dry_run, compte_inicial):
         client = SpoonacularClient(API_KEYS, max_punts, dry_run)
         if compte_inicial is not None:
             client.compte_actual = compte_inicial
             self.stdout.write(f"Usant compte #{compte_inicial + 1} com a inicial.\n")
+        return client
 
-        # ── Quins productes necessiten més receptes? ──
-        productes_pendents = productes_que_necessiten_mes_receptes(min_receptes)
-        total_pendents = len(productes_pendents)
 
+    def _escriure_resum_pendents(self, productes_pendents, min_receptes):
+        total = len(productes_pendents)
         self.stdout.write(
-            f"📋 Productes que necessiten més receptes: {total_pendents}\n"
-            f"   Punts estimats necessaris: ~{total_pendents * 2} "
+            f"📋 Productes que necessiten més receptes: {total}\n"
+            f"   Mínim de receptes per ingredient    : {min_receptes}\n"
+            f"   Punts estimats necessaris: ~{total * 2} "
             f"(1 cerca + ~1 detall per lot)\n\n"
         )
 
-        if not productes_pendents:
-            self.stdout.write(self.style.SUCCESS("✅ Tots els productes ja tenen prou receptes!"))
-            return
 
-        if dry_run:
-            self.stdout.write("🔍 DRY-RUN: Els primers 10 productes pendents:")
-            for p in productes_pendents[:10]:
-                n = receptes_actuals_per_producte(p)
-                self.stdout.write(
-                    f"   - {p} | receptes: {n}/{min_receptes} | "
-                    f"alias_api: {alias_api_del_producte(p)}"
-                )
-            return
+    def _mostrar_dry_run(self, productes_pendents, min_receptes):
+        self.stdout.write("🔍 DRY-RUN: Els primers 10 productes pendents:")
+        for p in productes_pendents[:10]:
+            n = receptes_actuals_per_producte(p)
+            self.stdout.write(
+                f"   - {p} | receptes: {n}/{min_receptes} | "
+                f"alias_api: {alias_api_del_producte(p)}"
+            )
 
-        # ── Processar en lots ──
-        lots = construir_lots(productes_pendents, INGREDIENTS_PER_LOT)
-        receptes_creades = 0
-        receptes_duplicades = 0
-        errors = 0
 
-        try:
-            for i, lot in enumerate(lots):
-                # Comprova si el lot ja té prou receptes (pot haver canviat)
-                lot_filtrat = [
-                    p for p in lot
-                    if receptes_actuals_per_producte(p) < min_receptes
-                ]
-                if not lot_filtrat:
-                    continue
-
-                noms_lot = []
-                for p in lot_filtrat:
-                    noms_lot.extend(alias_api_del_producte(p))
-
-                punts_restants = client.punts_totals_restants
-                self.stdout.write(
-                    f"[{i+1}/{len(lots)}] 🔎 Lot: {[p.nom for p in lot_filtrat]} | "
-                    f"Punts restants: {punts_restants}"
-                )
-
-                # ── Cerca receptes pel lot ──
-                try:
-                    resultats = client.find_by_ingredients(noms_lot)
-                except PaymentRequiredError as e:
-                    self.stdout.write(self.style.ERROR(f"\n{e}"))
-                    self.stdout.write(self.style.ERROR(
-                        "⛔ API key sense punts. Torna-ho a executar demà.\n"
-                    ))
-                    break
-                except LimitEpuisatError:
-                    self.stdout.write(self.style.ERROR(
-                        "\n⛔ Tots els punts del dia esgotats. "
-                        "Torna-ho a executar demà.\n"
-                    ))
-                    break
-                except requests.RequestException as e:
-                    self.stdout.write(self.style.WARNING(f"   ⚠️  Error de xarxa: {e}"))
-                    errors += 1
-                    continue
-
-                if not resultats:
-                    self.stdout.write("   ℹ️  Cap resultat per aquest lot.")
-                    continue
-
-                # ── Obtenir detall de cada recepta ──
-                for resultat in resultats:
-                    recipe_id = resultat.get("id")
-                    if not recipe_id:
-                        continue
-
-                    # Si ja existeix a la BD, no cal tornar a demanar el detall
-                    if Recepta.objects.filter(id_api=str(recipe_id)).exists():
-                        self.stdout.write(f"   ↩️  Recepta {recipe_id} ja existeix, vinculant...")
-                        receptes_duplicades += 1
-                        # Però sí intentem vincular-la als productes del lot
-                        recepta_existent = Recepta.objects.get(id_api=str(recipe_id))
-                        self._vincular_recepta_a_lot(recepta_existent, lot_filtrat)
-                        continue
-
-                    try:
-                        info = client.get_recipe_info(recipe_id)
-                    except PaymentRequiredError as e:
-                        self.stdout.write(self.style.ERROR(f"\n{e}"))
-                        self.stdout.write(self.style.ERROR(
-                            "⛔ API key sense punts. Torna-ho a executar demà.\n"
-                        ))
-                        break
-                    except LimitEpuisatError:
-                        self.stdout.write(self.style.ERROR(
-                            "\n⛔ Tots els punts del dia esgotats. "
-                            "Torna-ho a executar demà.\n"
-                        ))
-                        break
-                    except requests.RequestException as e:
-                        self.stdout.write(self.style.WARNING(
-                            f"   ⚠️  Error obtenint recepta {recipe_id}: {e}"
-                        ))
-                        errors += 1
-                        continue
-
-                    recepta, creada = guardar_recepta(info)
-                    if creada:
-                        receptes_creades += 1
-                        self.stdout.write(
-                            f"   ✅ Guardada: {recepta.nom} "
-                            f"({recepta.ingredientrecepta_set.count()} vinculats / "
-                            f"{len(recepta.ingredients_no_vinculats or [])} sense vincular)"
-                        )
-                    elif recepta is None:
-                        self.stdout.write(
-                            f"   ⏭️  Recepta {info.get('title', recipe_id)} descartada "
-                            f"(0 ingredients vinculats)"
-                        )
-                    else:
-                        receptes_duplicades += 1
-
-        except KeyboardInterrupt:
-            self.stdout.write(self.style.WARNING("\n\n⚠️  Interromput per l'usuari."))
-
-        # ── Resum final ──
-        productes_complets = len(productes_que_necessiten_mes_receptes(min_receptes))
+    def _escriure_resum_final(self, creades, duplicades, errors,
+                            complets, total_pendents, client):
         self.stdout.write(self.style.SUCCESS(
             f"\n{'='*60}\n"
             f"  RESUM\n"
-            f"  Receptes creades       : {receptes_creades}\n"
-            f"  Receptes ja existents  : {receptes_duplicades}\n"
+            f"  Receptes creades       : {creades}\n"
+            f"  Receptes ja existents  : {duplicades}\n"
             f"  Errors                 : {errors}\n"
-            f"  Productes pendents     : {productes_complets}/{total_pendents}\n"
+            f"  Productes pendents     : {complets}/{total_pendents}\n"
             f"  Punts usats per compte : {client.punts_usats}\n"
             f"{'='*60}\n"
+        ))
+
+
+    # ── Processament de lots ──────────────────────────────────────────────────────
+
+    def _processar_lots(self, productes_pendents, min_receptes, client):
+        lots = construir_lots(productes_pendents, INGREDIENTS_PER_LOT)
+        receptes_creades = receptes_duplicades = errors = 0
+
+        try:
+            for i, lot in enumerate(lots):
+                creades, duplicades, lot_errors, stop = self._processar_lot(
+                    i, lot, lots, min_receptes, client
+                )
+                receptes_creades    += creades
+                receptes_duplicades += duplicades
+                errors              += lot_errors
+                if stop:
+                    break
+        except KeyboardInterrupt:
+            self.stdout.write(self.style.WARNING("\n\n⚠️  Interromput per l'usuari."))
+
+        return receptes_creades, receptes_duplicades, errors
+
+
+    def _processar_lot(self, i, lot, lots, min_receptes, client):
+        """Retorna (creades, duplicades, errors, stop)."""
+        lot_filtrat = [p for p in lot if receptes_actuals_per_producte(p) < min_receptes]
+        if not lot_filtrat:
+            return 0, 0, 0, False
+
+        noms_lot = [nom for p in lot_filtrat for nom in alias_api_del_producte(p)]
+        self.stdout.write(
+            f"[{i+1}/{len(lots)}] 🔎 Lot: {[p.nom for p in lot_filtrat]} | "
+            f"Punts restants: {client.punts_totals_restants}"
+        )
+
+        resultats, stop = self._cercar_resultats(client, noms_lot)
+        if stop:
+            return 0, 0, 0, True
+        if resultats is None:
+            return 0, 0, 1, False
+        if not resultats:
+            self.stdout.write("   ℹ️  Cap resultat per aquest lot.")
+            return 0, 0, 0, False
+
+        creades, duplicades, errors, stop = self._processar_resultats(
+            resultats, lot_filtrat, client
+        )
+        return creades, duplicades, errors, stop
+
+
+    def _cercar_resultats(self, client, noms_lot):
+        """Retorna (resultats | None, stop)."""
+        try:
+            return client.find_by_ingredients(noms_lot), False
+        except PaymentRequiredError as e:
+            self._escriure_error_quota(str(e))
+            return None, True
+        except LimitEpuisatError:
+            self._escriure_error_limit()
+            return None, True
+        except requests.RequestException as e:
+            self.stdout.write(self.style.WARNING(f"   ⚠️  Error de xarxa: {e}"))
+            return None, False
+
+
+    def _processar_resultats(self, resultats, lot_filtrat, client):
+        """Retorna (creades, duplicades, errors, stop)."""
+        creades = duplicades = errors = 0
+        for resultat in resultats:
+            recipe_id = resultat.get("id")
+            if not recipe_id:
+                continue
+
+            if Recepta.objects.filter(id_api=str(recipe_id)).exists():
+                self.stdout.write(f"   ↩️  Recepta {recipe_id} ja existeix, vinculant...")
+                duplicades += 1
+                recepta_existent = Recepta.objects.get(id_api=str(recipe_id))
+                self._vincular_recepta_a_lot(recepta_existent, lot_filtrat)
+                continue
+
+            info, stop = self._obtenir_info_recepta(client, recipe_id)
+            if stop:
+                return creades, duplicades, errors, True
+            if info is None:
+                errors += 1
+                continue
+
+            nova_creada, duplicada = self._guardar_i_reportar(info, recipe_id)
+            creades    += nova_creada
+            duplicades += duplicada
+
+        return creades, duplicades, errors, False
+
+
+    def _obtenir_info_recepta(self, client, recipe_id):
+        """Retorna (info | None, stop)."""
+        try:
+            return client.get_recipe_info(recipe_id), False
+        except PaymentRequiredError as e:
+            self._escriure_error_quota(str(e))
+            return None, True
+        except LimitEpuisatError:
+            self._escriure_error_limit()
+            return None, True
+        except requests.RequestException as e:
+            self.stdout.write(self.style.WARNING(
+                f"   ⚠️  Error obtenint recepta {recipe_id}: {e}"
+            ))
+            return None, False
+
+
+    def _guardar_i_reportar(self, info, recipe_id):
+        """Retorna (creades, duplicades) com a enters 0/1."""
+        recepta, creada = guardar_recepta(info)
+        if creada:
+            self.stdout.write(
+                f"   ✅ Guardada: {recepta.nom} "
+                f"({recepta.ingredientrecepta_set.count()} vinculats / "
+                f"{len(recepta.ingredients_no_vinculats or [])} sense vincular)"
+            )
+            return 1, 0
+        if recepta is None:
+            self.stdout.write(
+                f"   ⏭️  Recepta {info.get('title', recipe_id)} descartada "
+                f"(0 ingredients vinculats)"
+            )
+            return 0, 0
+        return 0, 1
+
+
+    # ── Missatges d'error reutilitzables ─────────────────────────────────────────
+
+    def _escriure_error_quota(self, missatge):
+        self.stdout.write(self.style.ERROR(f"\n{missatge}"))
+        self.stdout.write(self.style.ERROR("⛔ API key sense punts. Torna-ho a executar demà.\n"))
+
+
+    def _escriure_error_limit(self):
+        self.stdout.write(self.style.ERROR(
+            "\n⛔ Tots els punts del dia esgotats. Torna-ho a executar demà.\n"
         ))
 
     def _vincular_recepta_a_lot(self, recepta: Recepta, lot: list[Producte]):

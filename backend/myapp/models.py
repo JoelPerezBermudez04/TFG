@@ -57,7 +57,7 @@ class Recepta(models.Model):
     nom = models.CharField(max_length=255)
     nom_en = models.CharField(max_length=255, blank=True)
     descripcio = models.TextField(blank=True)
-    descripcio_en = models.TextField(blank=True, null=True)
+    descripcio_en = models.TextField(blank=True)
     imatge_url = models.URLField(blank=True, null=True)
     temps_preparacio = models.IntegerField()
     porcions = models.IntegerField(default=1)
