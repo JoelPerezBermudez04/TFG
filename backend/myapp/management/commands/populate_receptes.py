@@ -432,6 +432,12 @@ def buscar_producte(nom_ingredient: str, cache: list, fuzzy_threshold: int = 75)
             if p:
                 return p
 
+    # ── Pas 3.5: cerca EXACTA pels sinonims (nova!) ──────────────────────────
+    # Si algun sinonim coincideix exactament amb el nom net, retorna el producte
+    for producte, noms_producte in cache:
+        if nom_net in noms_producte:
+            return producte
+    
     # ── Pas 4: fuzzy sobre el nom net ────────────────────────────────────────
     return _fuzzy_millor_producte(nom_net, nom_lower, cache, fuzzy_threshold)
 

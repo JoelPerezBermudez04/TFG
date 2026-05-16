@@ -58,9 +58,9 @@ def _carregar_api_keys() -> list[str]:
 API_KEYS = _carregar_api_keys()
 
 MAX_PUNTS_PER_COMPTE = 50       # Punts disponibles per compte i dia
-MIN_RECEPTES_PER_INGREDIENT = 5 # Mínim de receptes que ha de tenir cada ingredient
+MIN_RECEPTES_PER_INGREDIENT = 3 # Mínim de receptes que ha de tenir cada ingredient
 INGREDIENTS_PER_LOT = 1         # Quants ingredients per crida a findByIngredients
-RECEPTES_PER_LOT = 10           # Quantes receptes demanem per crida (màx 10)
+RECEPTES_PER_LOT = 5            # Quantes receptes demanem per crida (màx 10)
 PAUSA_ENTRE_CRIDES = 1.0        # Segons entre crides (evita rate limiting)
 MIN_INGREDIENTS_VINCULATS = 1   # Mínim d'ingredients vinculats per guardar una recepta
 
@@ -265,7 +265,7 @@ def convertir_quantitat(quantitat: float, unitat: str) -> tuple[float, str]:
 def trobar_producte_per_nom(nom_ingredient: str) -> Producte | None:
     """
     Intenta trobar un Producte de la nostra BD que correspongui
-    a un ingredient de Spoonacular, buscant per alias_api.nom_en o nom.
+    a un ingredient de Spoonacular, buscant per alias_api.nom_en, sinonims o nom.
     """
     nom_lower = nom_ingredient.lower().strip()
 
@@ -285,13 +285,20 @@ def trobar_producte_per_nom(nom_ingredient: str) -> Producte | None:
             if alias.lower() == nom_lower:
                 return producte
 
-    # 2. Busca per nom de producte (traduït)
+    # 2. Busca per sinonims (llista de strings)
+    for producte in Producte.objects.exclude(sinonims=None):
+        sinonims = producte.sinonims
+        if isinstance(sinonims, list):
+            if any(s.lower() == nom_lower for s in sinonims if isinstance(s, str)):
+                return producte
+
+    # 3. Busca per nom de producte (traduït)
     try:
         return Producte.objects.get(nom__iexact=nom_lower)
     except Producte.DoesNotExist:
         pass
 
-    # 3. Busca per contains (menys estricte)
+    # 4. Busca per contains (menys estricte)
     coincidencies = Producte.objects.filter(nom__icontains=nom_lower)
     if coincidencies.count() == 1:
         return coincidencies.first()

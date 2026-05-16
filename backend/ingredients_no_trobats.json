@@ -126,10 +126,32 @@
       "you can use regular basil"
     ]
   },
+  "651734": {
+    "recepta": "Latin Pork & Tomatillo Stew",
+    "ingredients_no_trobats": [
+      "pork shoulder",
+      "poblano chilies",
+      "serrano chilies"
+    ]
+  },
+  "636167": {
+    "recepta": "Broccoli Beef Stir-Fry",
+    "ingredients_no_trobats": [
+      "beef stir-fry strips"
+    ]
+  },
   "660133": {
     "recepta": "Pollastre rostit simple",
     "ingredients_no_trobats": [
       "rind of two lemons"
+    ]
+  },
+  "664206": {
+    "recepta": "Udon Noodles Chicken Tempura",
+    "ingredients_no_trobats": [
+      "udon noodles",
+      "soysauce",
+      "soysauce"
     ]
   },
   "641072": {
@@ -173,6 +195,18 @@
       "seasoning"
     ]
   },
+  "649040": {
+    "recepta": "Korean Chicken Stew",
+    "ingredients_no_trobats": [
+      "kochujang chili paste"
+    ]
+  },
+  "652824": {
+    "recepta": "My Asian Fried Fish Fillet",
+    "ingredients_no_trobats": [
+      "fish fillet"
+    ]
+  },
   "648247": {
     "recepta": "Guisat italià de marisc",
     "ingredients_no_trobats": [
@@ -205,10 +239,28 @@
       "spring salad"
     ]
   },
+  "648975": {
+    "recepta": "Kkaetnip Jangajji (Korean Pickled Perilla Leaves)",
+    "ingredients_no_trobats": [
+      "gochugaru"
+    ]
+  },
   "662291": {
     "recepta": "Quiche de tomàquet sec i porro",
     "ingredients_no_trobats": [
       "seasonings"
+    ]
+  },
+  "1681389": {
+    "recepta": "Italian Bread Bowls..use them for soup, salads or dips",
+    "ingredients_no_trobats": [
+      "active yeast"
+    ]
+  },
+  "648643": {
+    "recepta": "Julia Child's Vichyssoise",
+    "ingredients_no_trobats": [
+      "crème fraîche"
     ]
   },
   "651984": {
@@ -223,6 +275,13 @@
     "ingredients_no_trobats": [
       "meatballs",
       "sauce"
+    ]
+  },
+  "660366": {
+    "recepta": "Smoked Salmon and Mascarpone Calzone",
+    "ingredients_no_trobats": [
+      "mascarpone",
+      "pizza dough"
     ]
   },
   "636228": {
@@ -263,6 +322,26 @@
       "ice"
     ]
   },
+  "652717": {
+    "recepta": "Mushroom-Barley Side Dish",
+    "ingredients_no_trobats": [
+      "¾ pearl barley"
+    ]
+  },
+  "649439": {
+    "recepta": "Leek and Potato Soup with Ham",
+    "ingredients_no_trobats": [
+      "leeks and very parts only",
+      "very",
+      "very"
+    ]
+  },
+  "157093": {
+    "recepta": "Puff Paste quiche",
+    "ingredients_no_trobats": [
+      "puff paste"
+    ]
+  },
   "631865": {
     "recepta": "Pastís de xocolata de 3 minuts",
     "ingredients_no_trobats": [
@@ -274,6 +353,16 @@
     "ingredients_no_trobats": [
       "graham cracker crust",
       "vanilla pudding"
+    ]
+  },
+  "679540": {
+    "recepta": "Baked Whole Wheat Breakfast Quesadilla",
+    "ingredients_no_trobats": [
+      "tortillas",
+      "veggies",
+      "this is one breakfast",
+      "this recipe is a contest entry",
+      "what do your kids like to eat"
     ]
   },
   "646034": {
@@ -316,6 +405,12 @@
       "won ton wrappers"
     ]
   },
+  "659596": {
+    "recepta": "Scrambled Egg-Stuffed Poblano Chiles With Spicy Cheese Sauce",
+    "ingredients_no_trobats": [
+      "poblano chiles"
+    ]
+  },
   "633758": {
     "recepta": "Crema d'arròs al forn",
     "ingredients_no_trobats": [
@@ -336,6 +431,12 @@
       "cacao nibs",
       "goji berries",
       "lucuma powder"
+    ]
+  },
+  "635375": {
+    "recepta": "Blue Cornmeal Dried Blueberry and Pinon Nut Biscotti",
+    "ingredients_no_trobats": [
+      "piñon"
     ]
   },
   "1681411": {
@@ -372,10 +473,10 @@
       "preparation time: minutes"
     ]
   },
-  "1002260": {
-    "recepta": "Menjar de paella de pollastre amb baix contingut en carbohidrats",
+  "1956010": {
+    "recepta": "Apple Highball",
     "ingredients_no_trobats": [
-      "another sweetener"
+      "cognac"
     ]
   },
   "633519": {
@@ -384,10 +485,10 @@
       "breasts -- 2"
     ]
   },
-  "643459": {
-    "recepta": "Pastís de coco fresc",
+  "1002260": {
+    "recepta": "Menjar de paella de pollastre amb baix contingut en carbohidrats",
     "ingredients_no_trobats": [
-      "cake mix"
+      "another sweetener"
     ]
   },
   "659062": {
@@ -395,6 +496,12 @@
     "ingredients_no_trobats": [
       "chili paste",
       "grain spaghetti"
+    ]
+  },
+  "643459": {
+    "recepta": "Pastís de coco fresc",
+    "ingredients_no_trobats": [
+      "cake mix"
     ]
   },
   "648660": {
@@ -415,11 +522,31 @@
       "tagliatelle"
     ]
   },
+  "1955924": {
+    "recepta": "Affair",
+    "ingredients_no_trobats": [
+      "club soda"
+    ]
+  },
   "659358": {
     "recepta": "Sausage Calzone",
     "ingredients_no_trobats": [
       "pizza dough",
       "pizza sauce"
+    ]
+  },
+  "635447": {
+    "recepta": "Blueberry Compote Bread Pudding With Soft Curd Cheese Sabayon",
+    "ingredients_no_trobats": [
+      "quark",
+      "cointreau",
+      "cointreau"
+    ]
+  },
+  "1956880": {
+    "recepta": "Sex on the Beach",
+    "ingredients_no_trobats": [
+      "vodka"
     ]
   },
   "663987": {
@@ -459,10 +586,49 @@
       "ice"
     ]
   },
+  "662348": {
+    "recepta": "Super Man Cake with Fluffy White Topping",
+    "ingredients_no_trobats": [
+      "vanilla cake mix",
+      "food coloring",
+      "lite whipped topping"
+    ]
+  },
   "1697525": {
     "recepta": "6 Quick & Easy Smoothies To Start Your Morning",
     "ingredients_no_trobats": [
       "ice cubes"
+    ]
+  },
+  "641068": {
+    "recepta": "Curried Chicken Spread",
+    "ingredients_no_trobats": [
+      "chutney"
+    ]
+  },
+  "646286": {
+    "recepta": "Creamy, Cheesy Crab Dip",
+    "ingredients_no_trobats": [
+      "hot sauce"
+    ]
+  },
+  "640318": {
+    "recepta": "Crab Salad Stuffed Pita Pockets",
+    "ingredients_no_trobats": [
+      "wholewheat pita breads"
+    ]
+  },
+  "1160166": {
+    "recepta": "How to Make an Amazing Chicken Salad with Apples and Celery",
+    "ingredients_no_trobats": [
+      "rotisserie chicken cut",
+      "apples i use 2 granny smith apples"
+    ]
+  },
+  "657579": {
+    "recepta": "Quick Chicken Enchilada Soup",
+    "ingredients_no_trobats": [
+      "swanson premium chicken"
     ]
   },
   "641200": {
@@ -482,6 +648,13 @@
     "recepta": "Thai \"Chicken\" Wraps",
     "ingredients_no_trobats": [
       "of faux chicken strips"
+    ]
+  },
+  "661251": {
+    "recepta": "Spinach Almond Amaranth Breakfast Muffins",
+    "ingredients_no_trobats": [
+      "almond flour",
+      "amaranth"
     ]
   },
   "644813": {
@@ -505,10 +678,24 @@
       "servings"
     ]
   },
+  "655787": {
+    "recepta": "Persimmons Tofu Parfait",
+    "ingredients_no_trobats": [
+      "dates",
+      "goji berries",
+      "persimmons"
+    ]
+  },
   "636062": {
     "recepta": "Breakfast Porridge",
     "ingredients_no_trobats": [
       "old-fashioned oatmeal"
+    ]
+  },
+  "631744": {
+    "recepta": "Flourless Lentil Chocolate Brownies",
+    "ingredients_no_trobats": [
+      "mejdool dates"
     ]
   },
   "654417": {
@@ -517,10 +704,38 @@
       "rockfish"
     ]
   },
+  "661864": {
+    "recepta": "Strawberry Pretzel Salad",
+    "ingredients_no_trobats": [
+      "pretzels"
+    ]
+  },
+  "641411": {
+    "recepta": "Delicious RAW Macadamia Zucchini GREEN Smoothie",
+    "ingredients_no_trobats": [
+      "macadamia nuts",
+      "dates",
+      "spirulina …so much more",
+      "ice"
+    ]
+  },
   "715546": {
     "recepta": "Key Lime Pie",
     "ingredients_no_trobats": [
       "graham cracker crust"
+    ]
+  },
+  "652121": {
+    "recepta": "Mixed Green Farro Salad And Fresh Figs",
+    "ingredients_no_trobats": [
+      "farro"
+    ]
+  },
+  "660297": {
+    "recepta": "Slow Cooker Poblano Corn Chowder with Chicken and Chorizo",
+    "ingredients_no_trobats": [
+      "chicken breasts and/or thighs",
+      "poblano chiles"
     ]
   },
   "656506": {
@@ -541,6 +756,12 @@
       "bamboo skewers soaked in",
       "ground chili paste",
       "lemongrass"
+    ]
+  },
+  "661055": {
+    "recepta": "Spicy Chili w Boneless Beef Short Ribs",
+    "ingredients_no_trobats": [
+      "beef short ribs"
     ]
   },
   "632300": {
@@ -622,6 +843,78 @@
     "ingredients_no_trobats": [
       "vodka",
       "triple sec"
+    ]
+  },
+  "982382": {
+    "recepta": "Instant Pot Chicken Taco Soup",
+    "ingredients_no_trobats": [
+      "chilis"
+    ]
+  },
+  "660697": {
+    "recepta": "Southern Fried Catfish",
+    "ingredients_no_trobats": [
+      "dressed catfish"
+    ]
+  },
+  "640156": {
+    "recepta": "Cornmeal and Green Peppercorn Crusted Spareribs",
+    "ingredients_no_trobats": [
+      "st. pork spareribs"
+    ]
+  },
+  "663364": {
+    "recepta": "Thin Crust Spinach Parmesan Pizza",
+    "ingredients_no_trobats": [
+      "pizza dough"
+    ]
+  },
+  "633092": {
+    "recepta": "Autumn Corn Bake",
+    "ingredients_no_trobats": [
+      "parkay margarine"
+    ]
+  },
+  "632347": {
+    "recepta": "Ancient Grains Bread",
+    "ingredients_no_trobats": [
+      "amaranth grain",
+      "vital wheat gluten"
+    ]
+  },
+  "636767": {
+    "recepta": "Cake with mango mousse and white chocolate",
+    "ingredients_no_trobats": [
+      "cocoa",
+      "full of flour",
+      "cake - diameter cm",
+      "mascarpone"
+    ]
+  },
+  "643559": {
+    "recepta": "Fresh Peach Margarita With Lime Sugar",
+    "ingredients_no_trobats": [
+      "ice",
+      "silver tequila"
+    ]
+  },
+  "644397": {
+    "recepta": "Gateau De Mousse A La Nectarine",
+    "ingredients_no_trobats": [
+      "nectarines"
+    ]
+  },
+  "663043": {
+    "recepta": "Terrine de Foies de Volaille",
+    "ingredients_no_trobats": [
+      "cognac",
+      "sel gris and cornichon"
+    ]
+  },
+  "636212": {
+    "recepta": "Broccoli Rabe with Tomatoes, Anchovies & Spaghetti",
+    "ingredients_no_trobats": [
+      "spaghetti"
     ]
   }
 }
