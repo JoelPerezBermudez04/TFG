@@ -7,9 +7,7 @@ from myapp.models import Categoria, Producte
 SPOONACULAR_IMG_BASE = 'https://img.spoonacular.com/ingredients_100x100/'
 
 EMOJI_MAP = {
-    "salsitxes picants": "🌭", "spicy sausages": "🌭",
-    "amanida de primavera": "🥗", "spring salad": "🥗",
-    "xoriços": "🌭", "chorizos": "🌭",
+    "pa de pita": "🫓", "pita bread": "🫓",
 }
 
 CATEGORY_EMOJI = {
@@ -26,27 +24,15 @@ CATEGORY_EMOJI = {
 }
 
 CATEGORIES = [
-    ("Carns", [
-        "spicy sausages",
-        "chorizos",
-    ]),
-    ("Fruites", [
-    ]),
-    ("Verdures i hortalisses", [
-        "spring salad",
-    ]),
-    ("Peix i marisc", [
-        
-    ]),
+    ("Carns", []),
+    ("Fruites", []),
+    ("Verdures i hortalisses", []),
+    ("Peix i marisc", []),
     ("Cereals i llegums", [
-        
+        "pita bread",
     ]),
-    ("Olis i condiments", [
-        
-    ]),
-    ("Begudes", [
-        
-    ]),
+    ("Olis i condiments", []),
+    ("Begudes", []),
 ]
 
 # Sinonims a afegir a productes ja existents (sense cridar l'API)
