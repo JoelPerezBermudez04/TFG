@@ -8,6 +8,8 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/home/screens/main_screen.dart';
 import 'features/inventari/providers/inventory_provider.dart';
 import 'features/products/providers/products_provider.dart';
+import 'features/receptes/providers/receptes_provider.dart';
+import 'features/llista_compra/providers/compra_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +28,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProductsProvider()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()),
+        ChangeNotifierProvider(create: (_) => ReceptesProvider()),
+        ChangeNotifierProvider(create: (_) => CompraProvider()),
       ],
       child: MaterialApp(
         title: 'My App',

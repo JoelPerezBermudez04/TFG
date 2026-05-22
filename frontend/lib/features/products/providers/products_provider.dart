@@ -72,4 +72,18 @@ class ProductsProvider with ChangeNotifier {
       return null;
     }
   }
+
+  Future<Product?> fetchProductById(int id) async {
+    // Primer mirem si ja el tenim a la llista local
+    final local = getProductById(id);
+    if (local != null) return local;
+
+    try {
+      final response = await _api.get('${ApiConfig.products}$id/');
+      if (response['statusCode'] == 200) {
+        return Product.fromJson(response['body']);
+      }
+    } catch (_) {}
+    return null;
+  }
 }
