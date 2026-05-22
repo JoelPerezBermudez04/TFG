@@ -366,7 +366,7 @@ class ItemCompraViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        qs = ItemCompra.objects.filter(usuari=request.user).select_related('producte')
+        qs = ItemCompra.objects.filter(usuari=request.user).select_related('producte__categoria')
         return Response(ItemCompraSerializer(qs, many=True).data)
 
     def create(self, request):
