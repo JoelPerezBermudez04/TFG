@@ -10,11 +10,13 @@ except ImportError:
 
 # Mapeig fix de dietes: anglès → català normalitzat
 # Valors no inclosos s'ignoren (very popular, very healthy, etc.)
+_LACTO_OVO = 'Lacto-ovo-vegetarià'
+
 DIETES_MAP = {
     'vegetarian':           'Vegetarià',
-    'lacto vegetarian':     'Lacto-ovo-vegetarià',
-    'ovo vegetarian':       'Lacto-ovo-vegetarià',
-    'lacto ovo vegetarian': 'Lacto-ovo-vegetarià',
+    'lacto vegetarian':     _LACTO_OVO,
+    'ovo vegetarian':       _LACTO_OVO,
+    'lacto ovo vegetarian': _LACTO_OVO,
     'vegan':                'Vegà',
     'pescatarian':          'Pescatarià',
     'gluten free':          'Sense gluten',
@@ -135,8 +137,7 @@ class Command(BaseCommand):
                     dietes_ca, dietes_no_mapejades = traduir_dietes(dietes_en)
                     self.stdout.write(f'   Dietes: {", ".join(dietes_ca)}')
                     if dietes_no_mapejades:
-                        for v in dietes_no_mapejades:
-                            no_mapejats_globals.add(v)
+                        no_mapejats_globals.update(dietes_no_mapejades)
 
                 # ── Tradueix intoleràncies ["dairy", ...] ─────────────────────
                 intolerancias_ca = None
@@ -177,7 +178,7 @@ class Command(BaseCommand):
 
         if no_mapejats_globals:
             self.stdout.write(self.style.WARNING(
-                f'\n⚠️  Valors de dieta NO mapejats (ignorats, revisa si cal afegir-los al DIETES_MAP):'
+                '\n⚠️  Valors de dieta NO mapejats (ignorats, revisa si cal afegir-los al DIETES_MAP):'
             ))
             for v in sorted(no_mapejats_globals):
                 self.stdout.write(f'     - {v}')
