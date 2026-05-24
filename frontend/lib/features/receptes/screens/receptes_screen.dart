@@ -645,14 +645,11 @@ class _FiltresActiusRow extends StatelessWidget {
               '${provider.producteNom}',
               () => provider.setProducte(null, null),
             ),
-          if (provider.dieta != null)
-            _chip(provider.dieta!, () => provider.setDieta(null)),
-          if (provider.intolerancia != null)
-            _chip('Sense ${provider.intolerancia}',
-                () => provider.setIntolerancia(null)),
+          for (final d in provider.dietes)
+            _chip(d, () => provider.setDietes(
+                provider.dietes.where((v) => v != d).toList())),
           if (provider.maxTemps != null)
-            _chip('≤${provider.maxTemps} min',
-                () => provider.setMaxTemps(null)),
+            _chip('≤${provider.maxTemps} min', () => provider.setMaxTemps(null)),
           TextButton(
             onPressed: provider.clearFiltres,
             style: TextButton.styleFrom(
@@ -705,25 +702,31 @@ class _FiltresSheet extends StatefulWidget {
 }
 
 class _FiltresSheetState extends State<_FiltresSheet> {
-  String? _dieta;
-  String? _intolerancia;
+  Set<String> _dietes = {};
   double? _maxTemps;
   bool _nomesInventari = false;
   bool _nomesUrgents = false;
 
-  static const _dietes = [
-    'Vegetarià', 'Vegà', 'Sense gluten', 'Keto', 'Mediterrània',
-  ];
-  static const _intolerancias = [
-    'Gluten', 'Làctia', 'Ous', 'Fruits secs', 'Peix', 'Marisc', 'Soja',
+  static const _opcions = [
+    'Vegetarià',
+    'Vegà',
+    'Lacto-ovo-vegetarià',
+    'Pescatarià',
+    'Sense gluten',
+    'Sense làctics',
+    'Cetogènica',
+    'Paleolítica',
+    'Primal',
+    'Whole30',
+    'Baix en FODMAP',
+    'Compatible amb FODMAP',
   ];
 
   @override
   void initState() {
     super.initState();
     final p = context.read<ReceptesProvider>();
-    _dieta = p.dieta;
-    _intolerancia = p.intolerancia;
+    _dietes = Set.from(p.dietes);
     _maxTemps = p.maxTemps?.toDouble();
     _nomesInventari = p.nomesInventari;
     _nomesUrgents = p.nomesUrgents;
@@ -766,8 +769,7 @@ class _FiltresSheetState extends State<_FiltresSheet> {
                 TextButton(
                   onPressed: () {
                     setState(() {
-                      _dieta = null;
-                      _intolerancia = null;
+                      _dietes = {};
                       _maxTemps = null;
                       _nomesInventari = false;
                       _nomesUrgents = false;
@@ -875,33 +877,17 @@ class _FiltresSheetState extends State<_FiltresSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _dietes
+              children: _opcions
                   .map((d) => _selectableChip(
                         d,
-                        _dieta == d,
-                        () => setState(
-                            () => _dieta = _dieta == d ? null : d),
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Intolerància
-            const Text('Sense (al·lèrgens)',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _intolerancias
-                  .map((i) => _selectableChip(
-                        i,
-                        _intolerancia == i,
-                        () => setState(() =>
-                            _intolerancia = _intolerancia == i ? null : i),
+                        _dietes.contains(d),
+                        () => setState(() {
+                          if (_dietes.contains(d)) {
+                            _dietes.remove(d);
+                          } else {
+                            _dietes.add(d);
+                          }
+                        }),
                       ))
                   .toList(),
             ),
@@ -978,8 +964,7 @@ class _FiltresSheetState extends State<_FiltresSheet> {
 
   void _aplicar() {
     final p = context.read<ReceptesProvider>();
-    p.setDieta(_dieta);
-    p.setIntolerancia(_intolerancia);
+    p.setDietes(_dietes.toList());
     p.setMaxTemps(_maxTemps?.toInt());
     p.setNomesInventari(_nomesInventari);
     p.setNomesUrgents(_nomesUrgents);

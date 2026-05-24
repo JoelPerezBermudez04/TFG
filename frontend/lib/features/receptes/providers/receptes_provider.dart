@@ -193,8 +193,7 @@ class ReceptesProvider with ChangeNotifier {
 
   // Filtres actius
   String _search = '';
-  String? _dieta;
-  String? _intolerancia;
+  List<String> _dietes = [];
   int? _maxTemps;
   int? _producteId;
   String? _producteNom;
@@ -225,8 +224,7 @@ class ReceptesProvider with ChangeNotifier {
   int get total => _total;
 
   String get search => _search;
-  String? get dieta => _dieta;
-  String? get intolerancia => _intolerancia;
+  List<String> get dietes => _dietes;
   int? get maxTemps => _maxTemps;
   int? get producteId => _producteId;
   String? get producteNom => _producteNom;
@@ -247,8 +245,7 @@ class ReceptesProvider with ChangeNotifier {
 
   // ── Filtres ──
   void setSearch(String v) { _search = v; _aplicarFiltres(); }
-  void setDieta(String? v) { _dieta = v; _aplicarFiltres(); }
-  void setIntolerancia(String? v) { _intolerancia = v; _aplicarFiltres(); }
+  void setDietes(List<String> v) { _dietes = v; _aplicarFiltres(); }
   void setMaxTemps(int? v) { _maxTemps = v; _aplicarFiltres(); }
 
   // setProducte usa mode B (servidor), no filtre local
@@ -294,8 +291,7 @@ class ReceptesProvider with ChangeNotifier {
 
   void clearFiltres() {
     _search = '';
-    _dieta = null;
-    _intolerancia = null;
+    _dietes = [];
     _maxTemps = null;
     _producteId = null;
     _producteNom = null;
@@ -309,8 +305,7 @@ class ReceptesProvider with ChangeNotifier {
 
   bool get teFiltresActius =>
       _search.isNotEmpty ||
-      _dieta != null ||
-      _intolerancia != null ||
+      _dietes.isNotEmpty ||
       _maxTemps != null ||
       _producteId != null ||
       _nomesInventari ||
@@ -324,17 +319,11 @@ class ReceptesProvider with ChangeNotifier {
       final q = _search.toLowerCase();
       llista = llista.where((r) => r.nom.toLowerCase().contains(q)).toList();
     }
-    if (_dieta != null) {
-      final d = _dieta!.toLowerCase();
+    if (_dietes.isNotEmpty) {
       llista = llista.where((r) =>
           r.dietes != null &&
-          r.dietes!.any((v) => v.toLowerCase().contains(d))).toList();
-    }
-    if (_intolerancia != null) {
-      final intol = _intolerancia!.toLowerCase();
-      llista = llista.where((r) =>
-          r.intolerancias == null ||
-          !r.intolerancias!.any((v) => v.toLowerCase().contains(intol))).toList();
+          _dietes.every((d) =>
+              r.dietes!.any((v) => v.toLowerCase() == d.toLowerCase()))).toList();
     }
     if (_maxTemps != null) {
       llista = llista.where((r) => r.tempsPreparacio <= _maxTemps!).toList();
@@ -472,8 +461,9 @@ class ReceptesProvider with ChangeNotifier {
       final params = <String, String>{};
       params['limit'] = _limit.toString();
       params['offset'] = _offset.toString();
-      if (_dieta != null) params['dieta'] = _dieta!;
-      if (_intolerancia != null) params['intolerancia'] = _intolerancia!;
+      // El backend accepta un sol valor de dieta; si n'hi ha diverses
+      // enviem la primera i filtrem la resta localment
+      if (_dietes.isNotEmpty) params['dieta'] = _dietes.first;
       if (_maxTemps != null) params['max_temps'] = _maxTemps.toString();
       if (_nomesInventari) params['nomes_inventari'] = 'true';
       if (_nomesUrgents) params['nomes_urgents'] = 'true';
@@ -496,11 +486,18 @@ class ReceptesProvider with ChangeNotifier {
           _recomanacions = results;
         }
         _offset = _recomanacions.length;
-        // Filtre de cerca local
+        // Filtres locals sobre els resultats del servidor
         var visibles = _recomanacions;
         if (_search.isNotEmpty) {
           final q = _search.toLowerCase();
           visibles = visibles.where((r) => r.nom.toLowerCase().contains(q)).toList();
+        }
+        // Dietes addicionals (el backend només accepta la primera via ?dieta=)
+        if (_dietes.length > 1) {
+          visibles = visibles.where((r) =>
+              _dietes.every((d) =>
+                  r.dietes != null &&
+                  r.dietes!.any((v) => v.toLowerCase() == d.toLowerCase()))).toList();
         }
         _receptes = visibles.map((r) => r.toRecepta()).toList();
         _total = _serverTotal;
