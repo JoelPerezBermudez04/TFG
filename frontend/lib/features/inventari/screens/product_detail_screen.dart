@@ -6,6 +6,8 @@ import '../providers/inventory_provider.dart';
 import '../models/inventory_item_model.dart';
 import 'edit_product_screen.dart';
 import '../widgets/product_image.dart';
+import '../../receptes/providers/receptes_provider.dart';
+import '../../home/screens/main_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final int itemId;
@@ -167,6 +169,26 @@ class ProductDetailScreen extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+
+            // ── Botó receptes amb aquest ingredient ──
+            OutlinedButton.icon(
+              onPressed: () => _navigateToReceptes(context, item),
+              icon: const Icon(Icons.restaurant_menu_outlined),
+              label: Text(
+                'Receptes amb ${item.producteNom ?? 'aquest ingredient'}',
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: const BorderSide(color: AppColors.primary),
+                foregroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
             const SizedBox(height: 32),
           ],
         ),
@@ -196,6 +218,14 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _navigateToReceptes(BuildContext context, InventoryItem item) {
+    Navigator.pop(context);
+    MainScreen.navigatorKey.currentState?.switchToReceptesWithProducte(
+      item.producte,
+      item.producteNom ?? 'Producte',
     );
   }
 

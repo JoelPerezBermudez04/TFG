@@ -91,6 +91,59 @@ class Recepta {
       );
 }
 
+// Model per al mode recomanacions (/recomanacions/)
+class Recomanacio {
+  final String idApi;
+  final String nom;
+  final String? imatgeUrl;
+  final int tempsPreparacio;
+  final int porcions;
+  final List<String>? dietes;
+  final List<String>? intolerancias;
+  final double score;
+  final int ingredientsCoberts;
+  final int totalIngredients;
+
+  const Recomanacio({
+    required this.idApi,
+    required this.nom,
+    this.imatgeUrl,
+    required this.tempsPreparacio,
+    required this.porcions,
+    this.dietes,
+    this.intolerancias,
+    required this.score,
+    required this.ingredientsCoberts,
+    required this.totalIngredients,
+  });
+
+  factory Recomanacio.fromJson(Map<String, dynamic> j) => Recomanacio(
+        idApi: j['id_api'] as String,
+        nom: j['nom'] as String,
+        imatgeUrl: j['imatge_url'] as String?,
+        tempsPreparacio: j['temps_preparacio'] as int,
+        porcions: j['porcions'] as int,
+        dietes: (j['dietes'] as List?)?.cast<String>(),
+        intolerancias: (j['intolerancias'] as List?)?.cast<String>(),
+        score: (j['score'] as num).toDouble(),
+        ingredientsCoberts: j['ingredients_coberts'] as int,
+        totalIngredients: j['total_ingredients'] as int,
+      );
+
+  // Converteix a Recepta per reutilitzar ReceptaCard
+  Recepta toRecepta() => Recepta(
+        idApi: idApi,
+        nom: nom,
+        imatgeUrl: imatgeUrl,
+        tempsPreparacio: tempsPreparacio,
+        porcions: porcions,
+        dietes: dietes,
+        intolerancias: intolerancias,
+        ingredients: const [],
+        numIngredients: totalIngredients,
+      );
+}
+
 class FavoritItem {
   final int id;
   final String receptaId;
@@ -143,6 +196,17 @@ class ReceptesProvider with ChangeNotifier {
   String? _dieta;
   String? _intolerancia;
   int? _maxTemps;
+  int? _producteId;
+  String? _producteNom;
+
+  // Filtres de recomanacions (mode C)
+  bool _modeRecomanacions = true;
+  bool _nomesInventari = false;
+  bool _nomesUrgents = false;
+  List<int> _productesSeleccionats = [];  // IDs d'inventari per filtrar
+
+  // Recomanacions actuals (mode C)
+  List<Recomanacio> _recomanacions = [];
 
   // Detall
   Recepta? _receptaDetall;
@@ -164,6 +228,14 @@ class ReceptesProvider with ChangeNotifier {
   String? get dieta => _dieta;
   String? get intolerancia => _intolerancia;
   int? get maxTemps => _maxTemps;
+  int? get producteId => _producteId;
+  String? get producteNom => _producteNom;
+
+  bool get modeRecomanacions => _modeRecomanacions;
+  bool get nomesInventari => _nomesInventari;
+  bool get nomesUrgents => _nomesUrgents;
+  List<int> get productesSeleccionats => _productesSeleccionats;
+  List<Recomanacio> get recomanacions => _recomanacions;
 
   Recepta? get receptaDetall => _receptaDetall;
   bool get loadingDetall => _loadingDetall;
@@ -179,16 +251,70 @@ class ReceptesProvider with ChangeNotifier {
   void setIntolerancia(String? v) { _intolerancia = v; _aplicarFiltres(); }
   void setMaxTemps(int? v) { _maxTemps = v; _aplicarFiltres(); }
 
+  // setProducte usa mode B (servidor), no filtre local
+  void setProducte(int? id, String? nom) {
+    _producteId = id;
+    _producteNom = nom;
+    if (id != null) {
+      _fetchReceptesServidor();
+    } else {
+      _aplicarFiltres();
+    }
+  }
+
+  // ── Filtres de recomanacions (mode C) ──
+  void setModeRecomanacions(bool v) {
+    _modeRecomanacions = v;
+    if (v) {
+      _fetchRecomanacions();
+    } else {
+      _recomanacions = [];
+      if (_totsReceptes.isNotEmpty) {
+        _aplicarFiltres();
+      } else {
+        fetchReceptes();
+      }
+    }
+  }
+
+  void setNomesInventari(bool v) {
+    _nomesInventari = v;
+    if (_modeRecomanacions) _fetchRecomanacions();
+  }
+
+  void setNomesUrgents(bool v) {
+    _nomesUrgents = v;
+    if (_modeRecomanacions) _fetchRecomanacions();
+  }
+
+  void setProductesSeleccionats(List<int> ids) {
+    _productesSeleccionats = ids;
+    if (_modeRecomanacions) _fetchRecomanacions();
+  }
+
   void clearFiltres() {
     _search = '';
     _dieta = null;
     _intolerancia = null;
     _maxTemps = null;
-    _aplicarFiltres();
+    _producteId = null;
+    _producteNom = null;
+    _modeRecomanacions = true;
+    _nomesInventari = false;
+    _nomesUrgents = false;
+    _productesSeleccionats = [];
+    _recomanacions = [];
+    _fetchRecomanacions();
   }
 
   bool get teFiltresActius =>
-      _search.isNotEmpty || _dieta != null || _intolerancia != null || _maxTemps != null;
+      _search.isNotEmpty ||
+      _dieta != null ||
+      _intolerancia != null ||
+      _maxTemps != null ||
+      _producteId != null ||
+      _nomesInventari ||
+      _nomesUrgents;
 
   // Filtra localment sobre _totsReceptes
   void _aplicarFiltres() {
@@ -232,13 +358,30 @@ class ReceptesProvider with ChangeNotifier {
     final params = <String, String>{};
     params['limit'] = _limit.toString();
     params['offset'] = (offset ?? _offset).toString();
+    // Quan hi ha filtre per producte, el passem al servidor (el llistat no inclou ingredients)
+    if (_producteId != null) params['producte'] = _producteId.toString();
     final qs = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
     return '/receptes/?$qs';
   }
 
-  // ── Fetch llistat (carrega tot paginant al servidor, filtra localment) ──
+  // ── Fetch llistat ──
+  // Mode A (normal): carrega totes les pàgines i filtra localment
+  // Mode B (filtre per producte): delega al servidor via ?producte=X
+  // Mode C (recomanacions): crida /recomanacions/ amb filtres d'inventari
   Future<void> fetchReceptes({bool loadMore = false}) async {
     if (_isLoading) return;
+
+    if (_modeRecomanacions) {
+      await _fetchRecomanacions(loadMore: loadMore);
+      return;
+    }
+
+    if (_producteId != null) {
+      await _fetchReceptesServidor(loadMore: loadMore);
+      return;
+    }
+
+    // Mode A
     _isLoading = true;
     _error = null;
     if (!loadMore) notifyListeners();
@@ -259,7 +402,6 @@ class ReceptesProvider with ChangeNotifier {
         }
         _offset = _totsReceptes.length;
         _aplicarFiltres();
-        // Si hi ha més pàgines, carrega-les totes per poder filtrar localment
         if (_offset < _serverTotal) {
           _isLoading = false;
           fetchReceptes(loadMore: true);
@@ -267,6 +409,103 @@ class ReceptesProvider with ChangeNotifier {
         }
       } else {
         _error = 'Error carregant receptes';
+      }
+    } catch (_) {
+      _error = 'Error de connexió';
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // Mode B: resultats filtrats per producte directament del servidor
+  Future<void> _fetchReceptesServidor({bool loadMore = false}) async {
+    _isLoading = true;
+    _error = null;
+    if (!loadMore) {
+      _receptes = [];
+      _offset = 0;
+      _serverTotal = 0;
+    }
+    notifyListeners();
+
+    try {
+      final response = await _api.get(_buildQuery(offset: loadMore ? _offset : 0));
+      if (response['statusCode'] == 200) {
+        final body = response['body'] as Map<String, dynamic>;
+        _serverTotal = (body['count'] as int?) ?? 0;
+        final results = (body['results'] as List)
+            .map((e) => Recepta.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (loadMore) {
+          _receptes.addAll(results);
+        } else {
+          _receptes = results;
+        }
+        _offset = _receptes.length;
+        _total = _serverTotal;
+      } else {
+        _error = 'Error carregant receptes';
+      }
+    } catch (_) {
+      _error = 'Error de connexió';
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  // Mode C: recomanacions basades en l'inventari de l'usuari, amb paginació
+  Future<void> _fetchRecomanacions({bool loadMore = false}) async {
+    if (_isLoading) return;
+    _isLoading = true;
+    _error = null;
+    if (!loadMore) {
+      _recomanacions = [];
+      _receptes = [];
+      _offset = 0;
+      _serverTotal = 0;
+    }
+    notifyListeners();
+
+    try {
+      final params = <String, String>{};
+      params['limit'] = _limit.toString();
+      params['offset'] = _offset.toString();
+      if (_dieta != null) params['dieta'] = _dieta!;
+      if (_intolerancia != null) params['intolerancia'] = _intolerancia!;
+      if (_maxTemps != null) params['max_temps'] = _maxTemps.toString();
+      if (_nomesInventari) params['nomes_inventari'] = 'true';
+      if (_nomesUrgents) params['nomes_urgents'] = 'true';
+      if (_productesSeleccionats.isNotEmpty) {
+        params['productes'] = _productesSeleccionats.join(',');
+      }
+      final qs = params.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      final response = await _api.get('/recomanacions/?$qs');
+      if (response['statusCode'] == 200) {
+        final body = response['body'] as Map<String, dynamic>;
+        _serverTotal = (body['count'] as int?) ?? 0;
+        final results = (body['results'] as List)
+            .map((e) => Recomanacio.fromJson(e as Map<String, dynamic>))
+            .toList();
+        if (loadMore) {
+          _recomanacions.addAll(results);
+        } else {
+          _recomanacions = results;
+        }
+        _offset = _recomanacions.length;
+        // Filtre de cerca local
+        var visibles = _recomanacions;
+        if (_search.isNotEmpty) {
+          final q = _search.toLowerCase();
+          visibles = visibles.where((r) => r.nom.toLowerCase().contains(q)).toList();
+        }
+        _receptes = visibles.map((r) => r.toRecepta()).toList();
+        _total = _serverTotal;
+      } else {
+        _error = 'Error carregant recomanacions';
       }
     } catch (_) {
       _error = 'Error de connexió';

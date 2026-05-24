@@ -270,6 +270,13 @@ class ReceptaCard extends StatelessWidget {
     final esFav = provider.esFavorit(recepta.idApi);
     final toggling = provider.isToggling(recepta.idApi);
 
+    // Dades de cobertura (mode recomanacions)
+    final recomanacio = provider.modeRecomanacions
+        ? provider.recomanacions
+            .cast<Recomanacio?>()
+            .firstWhere((r) => r?.idApi == recepta.idApi, orElse: () => null)
+        : null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -358,10 +365,18 @@ class ReceptaCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         _metaChip(Icons.people_outline, '${recepta.porcions} p.'),
                         const SizedBox(width: 8),
-                        _metaChip(
-                            Icons.restaurant_outlined, '${recepta.numIngredients} ing.'),
+                        _metaChip(Icons.restaurant_outlined, '${recepta.numIngredients} ing.'),
+                        if (recomanacio != null) ...[
+                          const SizedBox(width: 8),
+                          _coberturaChip(recomanacio.ingredientsCoberts, recomanacio.totalIngredients),
+                        ],
                       ],
                     ),
+                    // Barra de cobertura en mode recomanacions
+                    if (recomanacio != null) ...[
+                      const SizedBox(height: 8),
+                      _coberturaBar(recomanacio.ingredientsCoberts, recomanacio.totalIngredients),
+                    ],
                     if (recepta.dietes != null && recepta.dietes!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Wrap(
@@ -378,6 +393,44 @@ class ReceptaCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _coberturaChip(int coberts, int total) {
+    final color = coberts == total
+        ? AppColors.success
+        : coberts >= total * 0.6
+            ? AppColors.warning
+            : AppColors.error;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.kitchen_outlined, size: 13, color: color),
+        const SizedBox(width: 3),
+        Text(
+          '$coberts/$total ing.',
+          style: TextStyle(
+              fontSize: 12, color: color, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  Widget _coberturaBar(int coberts, int total) {
+    final pct = total > 0 ? coberts / total : 0.0;
+    final color = pct == 1.0
+        ? AppColors.success
+        : pct >= 0.6
+            ? AppColors.warning
+            : AppColors.error;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: LinearProgressIndicator(
+        value: pct,
+        backgroundColor: Colors.grey.shade200,
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+        minHeight: 4,
       ),
     );
   }
@@ -583,6 +636,15 @@ class _FiltresActiusRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Row(
         children: [
+          if (provider.nomesInventari)
+            _chip('Tinc els ingredients', () => provider.setNomesInventari(false)),
+          if (provider.nomesUrgents)
+            _chip('Urgents', () => provider.setNomesUrgents(false)),
+          if (provider.producteNom != null)
+            _chip(
+              '${provider.producteNom}',
+              () => provider.setProducte(null, null),
+            ),
           if (provider.dieta != null)
             _chip(provider.dieta!, () => provider.setDieta(null)),
           if (provider.intolerancia != null)
@@ -646,6 +708,8 @@ class _FiltresSheetState extends State<_FiltresSheet> {
   String? _dieta;
   String? _intolerancia;
   double? _maxTemps;
+  bool _nomesInventari = false;
+  bool _nomesUrgents = false;
 
   static const _dietes = [
     'Vegetarià', 'Vegà', 'Sense gluten', 'Keto', 'Mediterrània',
@@ -661,6 +725,8 @@ class _FiltresSheetState extends State<_FiltresSheet> {
     _dieta = p.dieta;
     _intolerancia = p.intolerancia;
     _maxTemps = p.maxTemps?.toDouble();
+    _nomesInventari = p.nomesInventari;
+    _nomesUrgents = p.nomesUrgents;
   }
 
   @override
@@ -671,135 +737,217 @@ class _FiltresSheetState extends State<_FiltresSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Filtres',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _dieta = null;
+                      _intolerancia = null;
+                      _maxTemps = null;
+                      _nomesInventari = false;
+                      _nomesUrgents = false;
+                    });
+                  },
+                  child: const Text('Netejar',
+                      style: TextStyle(color: AppColors.error)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Secció recomanacions ──
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Filtres',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary)),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _dieta = null;
-                    _intolerancia = null;
-                    _maxTemps = null;
-                  });
-                },
-                child: const Text('Netejar',
-                    style: TextStyle(color: AppColors.error)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Temps màxim
-          const Text('Temps de preparació màxim',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: _maxTemps ?? 120,
-                  min: 10,
-                  max: 120,
-                  divisions: 11,
-                  activeColor: AppColors.primary,
-                  onChanged: (v) => setState(() => _maxTemps = v),
+                color: (_nomesInventari || _nomesUrgents) ? AppColors.primaryLight : AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: (_nomesInventari || _nomesUrgents) ? AppColors.primary : Colors.grey.shade200,
                 ),
               ),
-              SizedBox(
-                width: 56,
-                child: Text(
-                  _maxTemps != null ? '${_maxTemps!.toInt()} min' : 'Tots',
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary),
-                  textAlign: TextAlign.center,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.kitchen_outlined, size: 20, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text('Recomanacions',
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _switchOpcio(
+                    Icons.check_circle_outline,
+                    'Només ingredients que tinc',
+                    'Mostra receptes que pots fer ara',
+                    _nomesInventari,
+                    (v) => setState(() => _nomesInventari = v),
+                  ),
+                  const SizedBox(height: 10),
+                  _switchOpcio(
+                    Icons.warning_amber_outlined,
+                    'Només productes urgents',
+                    'Prioritza ingredients a punt de caducar',
+                    _nomesUrgents,
+                    (v) => setState(() => _nomesUrgents = v),
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
-                onPressed: () => setState(() => _maxTemps = null),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Dieta
-          const Text('Dieta',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _dietes
-                .map((d) => _selectableChip(
-                      d,
-                      _dieta == d,
-                      () => setState(
-                          () => _dieta = _dieta == d ? null : d),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 16),
-
-          // Intolerància
-          const Text('Sense (al·lèrgens)',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _intolerancias
-                .map((i) => _selectableChip(
-                      i,
-                      _intolerancia == i,
-                      () => setState(() =>
-                          _intolerancia = _intolerancia == i ? null : i),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 24),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _aplicar,
-              child: const Text('Aplicar filtres'),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // Temps màxim
+            const Text('Temps de preparació màxim',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: _maxTemps ?? 120,
+                    min: 10,
+                    max: 120,
+                    divisions: 11,
+                    activeColor: AppColors.primary,
+                    onChanged: (v) => setState(() => _maxTemps = v),
+                  ),
+                ),
+                SizedBox(
+                  width: 56,
+                  child: Text(
+                    _maxTemps != null ? '${_maxTemps!.toInt()} min' : 'Tots',
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                  onPressed: () => setState(() => _maxTemps = null),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Dieta
+            const Text('Dieta',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _dietes
+                  .map((d) => _selectableChip(
+                        d,
+                        _dieta == d,
+                        () => setState(
+                            () => _dieta = _dieta == d ? null : d),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Intolerància
+            const Text('Sense (al·lèrgens)',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _intolerancias
+                  .map((i) => _selectableChip(
+                        i,
+                        _intolerancia == i,
+                        () => setState(() =>
+                            _intolerancia = _intolerancia == i ? null : i),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _aplicar,
+                child: const Text('Aplicar filtres'),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _switchOpcio(
+      IconData icon, String titol, String subtitol, bool value, ValueChanged<bool> onChanged) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(titol,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+              Text(subtitol,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: AppColors.primary,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ],
     );
   }
 
@@ -833,6 +981,8 @@ class _FiltresSheetState extends State<_FiltresSheet> {
     p.setDieta(_dieta);
     p.setIntolerancia(_intolerancia);
     p.setMaxTemps(_maxTemps?.toInt());
+    p.setNomesInventari(_nomesInventari);
+    p.setNomesUrgents(_nomesUrgents);
     Navigator.pop(context);
   }
 }

@@ -54,7 +54,7 @@ class AuthWrapper extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           case AuthStatus.authenticated:
-            return const MainScreen();
+            return MainScreen(key: MainScreen.navigatorKey);
           case AuthStatus.unauthenticated:
             return const LoginScreen();
         }

@@ -12,6 +12,7 @@ import '../../inventari/screens/inventory_screen.dart';
 import '../../inventari/screens/product_detail_screen.dart';
 import '../../inventari/screens/add_product_screen.dart';
 import '../../inventari/widgets/product_image.dart';
+import '../../receptes/providers/receptes_provider.dart';
 import '../../receptes/screens/receptes_screen.dart';
 import '../../receptes/screens/recepta_detail_screen.dart';
 import '../../llista_compra/screens/compra_screen.dart';
@@ -20,12 +21,21 @@ import '../../llista_compra/providers/compra_provider.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  // Clau global per permetre la navegació cap a receptes des de qualsevol lloc
+  static final GlobalKey<MainScreenState> navigatorKey = GlobalKey<MainScreenState>();
+
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+
+  /// Navega a la tab de receptes i aplica un filtre per producte
+  void switchToReceptesWithProducte(int producteId, String producteNom) {
+    context.read<ReceptesProvider>().setProducte(producteId, producteNom);
+    setState(() => _currentIndex = 2);
+  }
 
   final List<Widget> _screens = [
     HomeScreen(),
