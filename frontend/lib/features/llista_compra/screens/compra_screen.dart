@@ -390,14 +390,15 @@ class _CompraItemTileState extends State<_CompraItemTile> {
               const SizedBox(width: 8),
               // Check circle
               GestureDetector(
-                onTap: () {
+                onTap: () async {
                   final estavaComprat = widget.item.comprat;
                   final itemCaptura = widget.item;
-                  context.read<CompraProvider>().toggleComprat(itemCaptura.id).then((_) {
-                    if (!estavaComprat) {
-                      widget.onMarcarComprat?.call(itemCaptura);
-                    }
-                  });
+                  final onMarcarComprat = widget.onMarcarComprat;
+                  final provider = context.read<CompraProvider>();
+                  await provider.toggleComprat(itemCaptura.id);
+                  if (!estavaComprat) {
+                    onMarcarComprat?.call(itemCaptura);
+                  }
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
