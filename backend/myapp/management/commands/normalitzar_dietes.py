@@ -18,54 +18,69 @@ from django.core.management.base import BaseCommand
 from myapp.models import Recepta
 
 
+# Dietes normalitzades compartides per evitar duplicació.
+VEGETARIA = 'Vegetarià'
+VEGA = 'Vegà'
+LACTO_OVO_VEGETARIA = 'Lacto-ovo-vegetarià'
+PESCATARIA = 'Pescatarià'
+SENSE_GLUTEN = 'Sense gluten'
+SENSE_LACTICS = 'Sense làctics'
+BAIX_EN_FODMAP = 'Baix en FODMAP'
+COMPATIBLE_AMB_FODMAP = 'Compatible amb FODMAP'
+CETOGENICA = 'Cetogènica'
+PALEOLITICA = 'Paleolítica'
+PRIMAL = 'Primal'
+WHOLE30 = 'Whole30'
+
+
 # Mapeig complet: valor actual (en qualsevol forma) → valor normalitzat
 # Qualsevol valor que no aparegui aquí s'ELIMINA (no és una dieta real)
 NORMALITZACIO = {
     # Vegetarià/vegà
-    'vegetarian':               'Vegetarià',
-    'vegetariana':              'Vegetarià',
-    'vegetarià':                'Vegetarià',
-    'vegan':                    'Vegà',
-    'vegà':                     'Vegà',
-    'lacto ovo vegetarian':     'Lacto-ovo-vegetarià',
-    'lacto ovo vegetarià':      'Lacto-ovo-vegetarià',
-    'lacto-ovo-vegetarià':      'Lacto-ovo-vegetarià',
-    'lacto vegetarian':         'Lacto-ovo-vegetarià',
-    'ovo vegetarian':           'Lacto-ovo-vegetarià',
+    'vegetarian':               VEGETARIA,
+    'vegetariana':              VEGETARIA,
+    'vegetarià':                VEGETARIA,
+    'vegan':                    VEGA,
+    'vegà':                     VEGA,
+    'lacto ovo vegetarian':     LACTO_OVO_VEGETARIA,
+    'lacto ovo vegetarià':      LACTO_OVO_VEGETARIA,
+    'lacto-ovo-vegetarià':      LACTO_OVO_VEGETARIA,
+    'lacto vegetarian':         LACTO_OVO_VEGETARIA,
+    'ovo vegetarian':           LACTO_OVO_VEGETARIA,
 
     # Pescatari
-    'pescatarian':              'Pescatarià',
-    'pescatarià':               'Pescatarià',
-    'pescatari':                'Pescatarià',
+    'pescatarian':              PESCATARIA,
+    'pescatarià':               PESCATARIA,
+    'pescatari':                PESCATARIA,
 
     # Sense gluten / làctics
-    'gluten free':              'Sense gluten',
-    'sense gluten':             'Sense gluten',
-    'dairy free':               'Sense làctics',
-    'lliure de lactis':         'Sense làctics',
-    'sense làctics':            'Sense làctics',
+    'gluten free':              SENSE_GLUTEN,
+    'sense gluten':             SENSE_GLUTEN,
+    'dairy free':               SENSE_LACTICS,
+    'lliure de lactis':         SENSE_LACTICS,
+    'sense làctics':            SENSE_LACTICS,
 
     # FODMAP
-    'low fodmap':               'Baix en FODMAP',
-    'mapa fodmap baix':         'Baix en FODMAP',
-    'baix en fodmap':           'Baix en FODMAP',
-    'fodmap friendly':          'Compatible amb FODMAP',
-    'amigable amb fodmap':      'Compatible amb FODMAP',
-    'compatible amb fodmap':    'Compatible amb FODMAP',
+    'low fodmap':               BAIX_EN_FODMAP,
+    'mapa fodmap baix':         BAIX_EN_FODMAP,
+    'baix en fodmap':           BAIX_EN_FODMAP,
+    'fodmap friendly':          COMPATIBLE_AMB_FODMAP,
+    'amigable amb fodmap':      COMPATIBLE_AMB_FODMAP,
+    'compatible amb fodmap':    COMPATIBLE_AMB_FODMAP,
 
     # Altres dietes
-    'ketogenic':                'Cetogènica',
-    'cetogènics':               'Cetogènica',
-    'cetogènica':               'Cetogènica',
-    'paleo':                    'Paleolítica',
-    'paleolithic':              'Paleolítica',
-    'paleolític':               'Paleolítica',
-    'paleolítica':              'Paleolítica',
-    'primal':                   'Primal',
-    'primordial':               'Primal',
-    'whole30':                  'Whole30',
-    'whole 30':                 'Whole30',
-    'sencer 30':                'Whole30',
+    'ketogenic':                CETOGENICA,
+    'cetogènics':               CETOGENICA,
+    'cetogènica':               CETOGENICA,
+    'paleo':                    PALEOLITICA,
+    'paleolithic':              PALEOLITICA,
+    'paleolític':               PALEOLITICA,
+    'paleolítica':              PALEOLITICA,
+    'primal':                   PRIMAL,
+    'primordial':               PRIMAL,
+    'whole30':                  WHOLE30,
+    'whole 30':                 WHOLE30,
+    'sencer 30':                WHOLE30,
 
     # ── Valors a ELIMINAR (no són dietes) ──────────────────────────────
     # very popular, very healthy → no s'afegeixen al mapeig → s'eliminen
