@@ -9,7 +9,16 @@ import '../models/inventory_item_model.dart';
 import '../widgets/product_image.dart';
 
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final int? producteIdInicial;
+  final double? quantitatInicial;
+  final String? unitatInicial;
+
+  const AddProductScreen({
+    super.key,
+    this.producteIdInicial,
+    this.quantitatInicial,
+    this.unitatInicial,
+  });
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -42,7 +51,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _quantityController.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProductsProvider>().fetchCategories();
+
+      // Si venim de la llista de la compra, pre-omplim i saltem al pas 1
+      if (widget.producteIdInicial != null) {
+        _preOmplirDesDeCompra();
+      }
     });
+  }
+
+  Future<void> _preOmplirDesDeCompra() async {
+    final productsProvider = context.read<ProductsProvider>();
+    final product = await productsProvider.fetchProductById(widget.producteIdInicial!);
+    if (product != null && mounted) {
+      setState(() {
+        _selectedProduct = product;
+        _step = 1;
+        _expiryDate = product.suggestedExpiryDate;
+        if (widget.quantitatInicial != null) {
+          _quantityController.text = widget.quantitatInicial!
+              .toStringAsFixed(widget.quantitatInicial! % 1 == 0 ? 0 : 2);
+        }
+        if (widget.unitatInicial != null) {
+          // Normalitzem 'unitats' → 'unitat' per coincidir amb _unitBases
+          final u = widget.unitatInicial!;
+          _selectedUnit = _unitBases.contains(u) ? u : 'unitat';
+        }
+      });
+    }
   }
 
   @override

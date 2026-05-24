@@ -9,7 +9,9 @@ import '../widgets/product_image.dart';
 import 'product_detail_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
-  const InventoryScreen({super.key});
+  final String? initialFilter;
+
+  const InventoryScreen({super.key, this.initialFilter});
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -17,7 +19,7 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   String _searchQuery = '';
-  String _selectedFilter = 'Tot';
+  late String _selectedFilter;
   String? _selectedCategoria;
   final List<String> _filters = ['Tot', 'Fresc', 'Aviat', 'Caducat'];
 
@@ -27,6 +29,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedFilter = widget.initialFilter ?? 'Tot';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<InventoryProvider>().fetchInventory();
     });

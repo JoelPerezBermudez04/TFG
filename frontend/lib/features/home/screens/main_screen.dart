@@ -12,21 +12,35 @@ import '../../inventari/screens/inventory_screen.dart';
 import '../../inventari/screens/product_detail_screen.dart';
 import '../../inventari/screens/add_product_screen.dart';
 import '../../inventari/widgets/product_image.dart';
+import '../../receptes/providers/receptes_provider.dart';
+import '../../receptes/screens/receptes_screen.dart';
+import '../../receptes/screens/recepta_detail_screen.dart';
+import '../../llista_compra/screens/compra_screen.dart';
+import '../../llista_compra/providers/compra_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  // Clau global per permetre la navegació cap a receptes des de qualsevol lloc
+  static final GlobalKey<MainScreenState> navigatorKey = GlobalKey<MainScreenState>();
+
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
+  /// Navega a la tab de receptes i aplica un filtre per producte
+  void switchToReceptesWithProducte(int producteId, String producteNom) {
+    context.read<ReceptesProvider>().setProducte(producteId, producteNom);
+    setState(() => _currentIndex = 2);
+  }
+
+  final List<Widget> _screens = [
     HomeScreen(),
     InventoryScreen(),
-    _RecipesPlaceholder(),
+    ReceptesScreen(),
     ProfileScreen(),
   ];
 
@@ -35,12 +49,75 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<InventoryProvider>().fetchInventory();
+      context.read<CompraProvider>().fetchItems();
     });
+  }
+
+  bool get _mostrarIconaCompra => _currentIndex < 3;
+
+  void _onTabSelected(int index) {
+    // Refrescar l'inventari cada cop que es navega a la pestanya d'inici o rebost
+    if (index == 0 || index == 1) {
+      context.read<InventoryProvider>().fetchInventory();
+    }
+    setState(() => _currentIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final pendents = context.watch<CompraProvider>().totalPendents;
+
     return Scaffold(
+      appBar: _mostrarIconaCompra
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    tooltip: 'Llista de la compra',
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const CompraScreen()),
+                    ),
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.shopping_cart_outlined,
+                            color: AppColors.textPrimary, size: 26),
+                        if (pendents > 0)
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                  minWidth: 17, minHeight: 17),
+                              child: Text(
+                                pendents > 99 ? '99+' : '$pendents',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : null,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -82,7 +159,7 @@ class _MainScreenState extends State<MainScreen> {
     final isSelected = _currentIndex == index;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () => _onTabSelected(index),
         borderRadius: BorderRadius.circular(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -106,6 +183,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
 }
 
 // ──────────────────────────────────────────────
@@ -155,7 +233,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _api = ApiService();
 
   List<_RecomanacioResumida> _recomanacions = [];
@@ -165,9 +243,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchRecomanacions();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refrescar inventari quan l'app torna al primer pla
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<InventoryProvider>().fetchInventory();
+    }
   }
 
   Future<void> _fetchRecomanacions() async {
@@ -281,15 +374,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _sectionHeader(
                     '🍳 Receptes recomanades',
                     subtitle: 'Basades en el teu rebost',
-                    action: _loadingRec
-                        ? null
-                        : TextButton(
-                            onPressed: _fetchRecomanacions,
-                            child: const Text(
-                              'Actualitzar',
-                              style: TextStyle(color: AppColors.primary, fontSize: 12),
-                            ),
-                          ),
                   ),
                   const SizedBox(height: 12),
                   _buildRecomanacions(),
@@ -363,6 +447,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Productes',
             color: AppColors.primary,
             bg: AppColors.primaryLight,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InventoryScreen()),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -373,6 +461,13 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Aviat',
             color: AppColors.expirySoonText,
             bg: AppColors.expirySoon,
+            onTap: urgents > 0
+                ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const InventoryScreen(initialFilter: 'Aviat')),
+                    )
+                : null,
           ),
         ),
         const SizedBox(width: 12),
@@ -383,6 +478,13 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Caducats',
             color: AppColors.expiryUrgentText,
             bg: AppColors.expiryUrgent,
+            onTap: caducats > 0
+                ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const InventoryScreen(initialFilter: 'Caducat')),
+                    )
+                : null,
           ),
         ),
       ],
@@ -395,14 +497,21 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required Color color,
     required Color bg,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: bg,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color, size: 22),
@@ -425,11 +534,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+        ),
+      ),
     );
   }
-
-  // ─────────────────────────────────────────────
-  // Capçalera de secció
   // ─────────────────────────────────────────────
   Widget _sectionHeader(String title, {String? subtitle, Widget? action}) {
     return Row(
@@ -741,9 +849,18 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            // TODO: navegar a detall recepta quan estigui implementat
-          },
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ReceptaDetailScreen(idApi: rec.idApi),
+            ),
+          ).then((_) {
+            // Refrescar inventari i recomanacions quan es torna del detall
+            if (mounted) {
+              context.read<InventoryProvider>().fetchInventory();
+              _fetchRecomanacions();
+            }
+          }),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(

@@ -8,6 +8,48 @@ try:
 except ImportError:
     HAS_TRANSLATOR = False
 
+# Mapeig fix de dietes: anglès → català normalitzat
+# Valors no inclosos s'ignoren (very popular, very healthy, etc.)
+_LACTO_OVO = 'Lacto-ovo-vegetarià'
+
+DIETES_MAP = {
+    'vegetarian':           'Vegetarià',
+    'lacto vegetarian':     _LACTO_OVO,
+    'ovo vegetarian':       _LACTO_OVO,
+    'lacto ovo vegetarian': _LACTO_OVO,
+    'vegan':                'Vegà',
+    'pescatarian':          'Pescatarià',
+    'gluten free':          'Sense gluten',
+    'dairy free':           'Sense làctics',
+    'ketogenic':            'Cetogènica',
+    'paleo':                'Paleolítica',
+    'paleolithic':          'Paleolítica',
+    'primal':               'Primal',
+    'whole30':              'Whole30',
+    'whole 30':             'Whole30',
+    'low fodmap':           'Baix en FODMAP',
+    'fodmap friendly':      'Compatible amb FODMAP',
+}
+
+
+def traduir_dietes(dietes_en: list) -> tuple:
+    """Tradueix dietes amb mapeig fix.
+    Retorna (dietes_cat, no_mapejades).
+    """
+    result = []
+    no_mapejades = []
+    seen = set()
+    for d in (dietes_en or []):
+        clau = d.lower().strip()
+        cat = DIETES_MAP.get(clau)
+        if cat and cat not in seen:
+            result.append(cat)
+            seen.add(cat)
+        elif not cat:
+            no_mapejades.append(d)
+    return result, no_mapejades
+
+
 
 class Command(BaseCommand):
     help = 'Tradueix les receptes de l\'anglès al català i guarda els originals als camps _en'
@@ -55,6 +97,8 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'🌐 Traduint {total} receptes\n'))
 
+        no_mapejats_globals = set()
+
         for recepta in receptes:
             try:
                 self.stdout.write(f'\n📖 {recepta.nom}')
@@ -87,11 +131,13 @@ class Command(BaseCommand):
                         instruccions_ca.append({'num': pas.get('num'), 'text': text_ca})
                     self.stdout.write(f'   Instruccions: {len(instruccions_ca)} passos traduïts')
 
-                # ── Tradueix dietes ["vegetarian", ...] ──────────────────────
+                # ── Dietes: mapeig fix (no Google Translate) ─────────────────
                 dietes_ca = None
                 if dietes_en:
-                    dietes_ca = [traduir(d, translator) for d in dietes_en]
+                    dietes_ca, dietes_no_mapejades = traduir_dietes(dietes_en)
                     self.stdout.write(f'   Dietes: {", ".join(dietes_ca)}')
+                    if dietes_no_mapejades:
+                        no_mapejats_globals.update(dietes_no_mapejades)
 
                 # ── Tradueix intoleràncies ["dairy", ...] ─────────────────────
                 intolerancias_ca = None
@@ -129,6 +175,15 @@ class Command(BaseCommand):
         prefix = '[DRY RUN] ' if dry_run else ''
         self.stdout.write(self.style.SUCCESS(f'\n{prefix}✅ Fet!'))
         self.stdout.write(f'  ✓ {total - errors} receptes traduïdes\n  ✗ {errors} errors')
+
+        if no_mapejats_globals:
+            self.stdout.write(self.style.WARNING(
+                '\n⚠️  Valors de dieta NO mapejats (ignorats, revisa si cal afegir-los al DIETES_MAP):'
+            ))
+            for v in sorted(no_mapejats_globals):
+                self.stdout.write(f'     - {v}')
+        else:
+            self.stdout.write('\n✅ Totes les dietes reconegudes correctament.')
 
 
 def traduir(text: str, translator) -> str:
