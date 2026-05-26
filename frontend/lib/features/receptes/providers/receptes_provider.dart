@@ -244,8 +244,24 @@ class ReceptesProvider with ChangeNotifier {
   bool isToggling(String idApi) => _toggling.contains(idApi);
 
   // ── Filtres ──
-  void setSearch(String v) { _search = v; _aplicarFiltres(); }
-  void setDietes(List<String> v) { _dietes = v; _aplicarFiltres(); }
+  void setSearch(String v) {
+    _search = v;
+    if (_modeRecomanacions) {
+      // En mode recomanacions el filtre és local sobre els resultats ja carregats
+      _aplicarFiltresRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
+
+  void setDietes(List<String> v) {
+    _dietes = v;
+    if (_modeRecomanacions) {
+      _fetchRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
   void setMaxTemps(int? v) { _maxTemps = v; _aplicarFiltres(); }
 
   // setProducte usa mode B (servidor), no filtre local
@@ -332,6 +348,24 @@ class ReceptesProvider with ChangeNotifier {
     _receptes = llista;
     _total = llista.length;
     notifyListeners();
+  }
+
+  // Filtra localment sobre els resultats de recomanacions ja carregats (sense nova crida al servidor)
+  void _aplicarFiltresRecomanacions({bool notify = true}) {
+    var visibles = _recomanacions;
+    if (_search.isNotEmpty) {
+      final q = _search.toLowerCase();
+      visibles = visibles.where((r) => r.nom.toLowerCase().contains(q)).toList();
+    }
+    if (_dietes.length > 1) {
+      visibles = visibles.where((r) =>
+          _dietes.every((d) =>
+              r.dietes != null &&
+              r.dietes!.any((v) => v.toLowerCase() == d.toLowerCase()))).toList();
+    }
+    _receptes = visibles.map((r) => r.toRecepta()).toList();
+    _total = _serverTotal;
+    if (notify) notifyListeners();
   }
 
   void _resetAndFetch() {
@@ -487,20 +521,7 @@ class ReceptesProvider with ChangeNotifier {
         }
         _offset = _recomanacions.length;
         // Filtres locals sobre els resultats del servidor
-        var visibles = _recomanacions;
-        if (_search.isNotEmpty) {
-          final q = _search.toLowerCase();
-          visibles = visibles.where((r) => r.nom.toLowerCase().contains(q)).toList();
-        }
-        // Dietes addicionals (el backend només accepta la primera via ?dieta=)
-        if (_dietes.length > 1) {
-          visibles = visibles.where((r) =>
-              _dietes.every((d) =>
-                  r.dietes != null &&
-                  r.dietes!.any((v) => v.toLowerCase() == d.toLowerCase()))).toList();
-        }
-        _receptes = visibles.map((r) => r.toRecepta()).toList();
-        _total = _serverTotal;
+        _aplicarFiltresRecomanacions(notify: false);
       } else {
         _error = 'Error carregant recomanacions';
       }
