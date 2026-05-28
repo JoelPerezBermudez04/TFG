@@ -4,11 +4,13 @@ import '../../../core/config/api_config.dart';
 import '../models/inventory_item_model.dart';
 
 class InventoryProvider with ChangeNotifier {
-  final _api = ApiService();
+  final ApiService _api;
   List<InventoryItem> _items = [];
   List<InventoryItem> _expiringItems = [];
   bool _isLoading = false;
   String? _error;
+
+  InventoryProvider({ApiService? api}) : _api = api ?? ApiService();
 
   List<InventoryItem> get items => _items;
   List<InventoryItem> get expiringItems => _expiringItems;

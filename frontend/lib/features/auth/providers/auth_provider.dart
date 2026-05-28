@@ -9,10 +9,8 @@ import '../models/user_model.dart';
 enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthProvider with ChangeNotifier {
-  final _api = ApiService();
-  final _googleSignIn = GoogleSignIn(
-    serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
-  );
+  final ApiService _api;
+  late final GoogleSignIn _googleSignIn;
 
   User? _user;
   AuthStatus _status = AuthStatus.checking;
@@ -26,8 +24,15 @@ class AuthProvider with ChangeNotifier {
   bool get isSubmitting => _isSubmitting;
   String? get error => _error;
 
-  AuthProvider() {
-    _initAuth();
+  AuthProvider({ApiService? api, GoogleSignIn? googleSignIn, bool init = true})
+      : _api = api ?? ApiService() {
+    _googleSignIn = googleSignIn ??
+        GoogleSignIn(
+          serverClientId: dotenv.isInitialized ? dotenv.env['GOOGLE_WEB_CLIENT_ID'] : null,
+        );
+    if (init) {
+      _initAuth();
+    }
   }
 
   Future<void> _initAuth() async {
