@@ -188,7 +188,13 @@ class ReceptesProvider with ChangeNotifier {
   int _total = 0;
   int _offset = 0;
   static const int _limit = 20;
-  bool get hasMore => _offset < _serverTotal;
+  bool get hasMore {
+    // Si hi ha filtre local actiu (cerca o múltiples dietes), no paginem automàticament
+    // perquè el filtre ja s'aplica sobre tots els resultats carregats
+    final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
+    if (teFiltreLocal) return false;
+    return _offset < _serverTotal;
+  }
   int _serverTotal = 0;
 
   // Filtres actius
@@ -206,6 +212,9 @@ class ReceptesProvider with ChangeNotifier {
 
   // Recomanacions actuals (mode C)
   List<Recomanacio> _recomanacions = [];
+  // Comptador de generació: s'incrementa cada cop que es fa un fetch nou (no loadMore)
+  // per detectar si una càrrega paginada en curs ha quedat obsoleta
+  int _fetchGeneration = 0;
 
   // Detall
   Recepta? _receptaDetall;
@@ -364,7 +373,8 @@ class ReceptesProvider with ChangeNotifier {
               r.dietes!.any((v) => v.toLowerCase() == d.toLowerCase()))).toList();
     }
     _receptes = visibles.map((r) => r.toRecepta()).toList();
-    _total = _serverTotal;
+    // El total reflecteix els resultats visibles (filtrats localment), no el total del servidor
+    _total = _receptes.length;
     if (notify) notifyListeners();
   }
 
@@ -488,7 +498,9 @@ class ReceptesProvider with ChangeNotifier {
       _receptes = [];
       _offset = 0;
       _serverTotal = 0;
+      _fetchGeneration++;
     }
+    final int myGeneration = _fetchGeneration;
     notifyListeners();
 
     try {
@@ -508,6 +520,10 @@ class ReceptesProvider with ChangeNotifier {
           .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
           .join('&');
       final response = await _api.get('/recomanacions/?$qs');
+
+      // Si mentre esperàvem s'ha iniciat un fetch nou, descartem aquesta resposta
+      if (myGeneration != _fetchGeneration) return;
+
       if (response['statusCode'] == 200) {
         final body = response['body'] as Map<String, dynamic>;
         _serverTotal = (body['count'] as int?) ?? 0;
@@ -522,6 +538,16 @@ class ReceptesProvider with ChangeNotifier {
         _offset = _recomanacions.length;
         // Filtres locals sobre els resultats del servidor
         _aplicarFiltresRecomanacions(notify: false);
+
+        // Paginació automàtica només si no hi ha filtre local de cerca actiu,
+        // ja que el buscador filtra sobre els resultats ja carregats
+        final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
+        if (!teFiltreLocal && _offset < _serverTotal) {
+          _isLoading = false;
+          notifyListeners();
+          _fetchRecomanacions(loadMore: true);
+          return;
+        }
       } else {
         _error = 'Error carregant recomanacions';
       }
