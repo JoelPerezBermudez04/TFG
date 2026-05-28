@@ -227,14 +227,16 @@ class _RecomanacioResumida {
 // Pantalla principal
 // ──────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.api});
+
+  final ApiService? api;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  final _api = ApiService();
+  late final ApiService _api;
 
   List<_RecomanacioResumida> _recomanacions = [];
   bool _loadingRec = false;
@@ -244,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _api = widget.api ?? ApiService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchRecomanacions();
     });

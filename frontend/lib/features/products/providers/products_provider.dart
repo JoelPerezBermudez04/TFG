@@ -4,11 +4,17 @@ import '../../../core/config/api_config.dart';
 import '../models/product_model.dart';
 
 class ProductsProvider with ChangeNotifier {
-  final _api = ApiService();
+  final ApiService _api;
   List<Product> _products = [];
   List<Category> _categories = [];
   bool _isLoading = false;
   String? _error;
+
+  // Constructor per defecte
+  ProductsProvider() : _api = ApiService();
+
+  // Constructor injectable per a tests
+  ProductsProvider.withApi(this._api);
 
   List<Product> get products => _products;
   List<Category> get categories => _categories;

@@ -176,7 +176,9 @@ class FavoritItem {
 // ──────────────────────────────────────────────
 
 class ReceptesProvider with ChangeNotifier {
-  final _api = ApiService();
+  final ApiService _api;
+
+  ReceptesProvider({ApiService? api}) : _api = api ?? ApiService();
 
   // Cache de totes les receptes (sense filtres de servidor)
   List<Recepta> _totsReceptes = [];

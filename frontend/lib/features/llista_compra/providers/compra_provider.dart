@@ -3,10 +3,16 @@ import '../../../core/services/api_service.dart';
 import '../models/compra_item_model.dart';
 
 class CompraProvider with ChangeNotifier {
-  final _api = ApiService();
+  final ApiService _api;
   List<CompraItem> _items = [];
   bool _isLoading = false;
   String? _error;
+
+  // Constructor per defecte
+  CompraProvider() : _api = ApiService();
+
+  // Constructor injectable per a tests
+  CompraProvider.withApi(this._api);
 
   List<CompraItem> get items => _items;
   List<CompraItem> get pendents => _items.where((i) => !i.comprat).toList();
