@@ -391,7 +391,18 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
           .where((item) => item.producte == ing.producte)
           .toList();
 
-      for (final invItem in items) {
+      // Si hi ha duplicats, preguntem quin vol fer servir
+      InventoryItem? invItemTriat;
+      if (items.length > 1) {
+        if (!context.mounted) return;
+        invItemTriat = await _mostrarDialegTriarItem(context, ing, items);
+        if (invItemTriat == null) return; // cancel·lat
+      } else {
+        invItemTriat = items.first;
+      }
+
+      final invItem = invItemTriat;
+      {
         if (_unitatsCompatibles(ing.unitat, invItem.unitat)) {
           // Convertim tot a unitat base per comparar
           final necessariBase = _aUnitatBase(ing.quantitat, ing.unitat);
@@ -475,6 +486,108 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
       SnackBar(
         content: Text('Rebost actualitzat. Bon profit! 🍽️'),
         backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  // Diàleg per triar quin duplicat de l'inventari fer servir
+  Future<InventoryItem?> _mostrarDialegTriarItem(
+      BuildContext context, ingredient, List<InventoryItem> items) async {
+    final nom = ingredient.producteNom as String;
+    final emoji = ingredient.producteEmoji as String;
+
+    return showDialog<InventoryItem>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Quin $nom vols fer servir?',
+                style: const TextStyle(fontSize: 17),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Tens ${items.length} entrades d\'aquest producte al rebost. Tria quina vols consumir:',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            ...items.map((item) {
+              final quantStr = item.quantitat % 1 == 0
+                  ? item.quantitat.toInt().toString()
+                  : item.quantitat.toStringAsFixed(1);
+              final caducitat = item.dataCaducitat != null
+                  ? 'Caduca: ${item.dataCaducitat!.day.toString().padLeft(2, '0')}/${item.dataCaducitat!.month.toString().padLeft(2, '0')}/${item.dataCaducitat!.year}'
+                  : 'Sense data de caducitat';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () => Navigator.pop(ctx, item),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$quantStr ${item.unitat}',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    item.dataCaducitat != null
+                                        ? Icons.event_outlined
+                                        : Icons.event_busy_outlined,
+                                    size: 12,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    caducitat,
+                                    style: const TextStyle(
+                                        fontSize: 12, color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Cancel·lar'),
+          ),
+        ],
       ),
     );
   }
@@ -953,15 +1066,81 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
         ),
       );
 
-  Widget _dietaChip(String label, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
+  static const _dietesInfo = {
+    'Vegetarià': (emoji: '🥦', desc: 'No inclou carn ni peix, però sí ous, làctics i mel.'),
+    'Vegà': (emoji: '🌱', desc: 'Exclou tots els productes d\'origen animal: carn, peix, ous, làctics i mel.'),
+    'Lacto-ovo-vegetarià': (emoji: '🥚', desc: 'No inclou carn ni peix. Permet ous i productes làctics.'),
+    'Pescatarià': (emoji: '🐟', desc: 'Exclou la carn però permet peix i marisc.'),
+    'Sense gluten': (emoji: '🌾', desc: 'No conté blat, ordi, sègol ni espelta. Apta per a celíacs i sensibles al gluten.'),
+    'Sense làctics': (emoji: '🥛', desc: 'No conté llet ni cap derivat làctic (formatge, iogurt, mantega...).'),
+    'Cetogènica': (emoji: '🥑', desc: 'Molt baixa en carbohidrats i alta en greixos. Indueix la cetosi per cremar greix com a font d\'energia.'),
+    'Paleolítica': (emoji: '🍖', desc: 'Basada en aliments no processats: carn, peix, fruita, verdura i fruits secs. Exclou cereals, llegums i làctics.'),
+    'Primal': (emoji: '🫙', desc: 'Similar a la paleolítica però permet làctics d\'alta qualitat i alguns aliments fermentats.'),
+    'Whole30': (emoji: '📅', desc: 'Programa de 30 dies que elimina sucre afegit, cereals, llegums, làctics i additius.'),
+    'Baix en FODMAP': (emoji: '🔬', desc: 'Redueix els hidrats de carboni fermentables per alleujar símptomes de l\'intestí irritable.'),
+    'Compatible amb FODMAP': (emoji: '✅', desc: 'Apta per a persones amb síndrome de l\'intestí irritable.'),
+  };
+
+  void _mostrarInfoDieta(String dieta) {
+    final info = _dietesInfo[dieta];
+    if (info == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(info.emoji, style: const TextStyle(fontSize: 36)),
+              const SizedBox(height: 12),
+              Text(
+                dieta,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                info.desc,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Tancar'),
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12, color: fg, fontWeight: FontWeight.w500)),
+      ),
+    );
+  }
+
+  Widget _dietaChip(String label, Color bg, Color fg) => GestureDetector(
+        onLongPress: () => _mostrarInfoDieta(label),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12, color: fg, fontWeight: FontWeight.w500)),
+        ),
       );
 }
 // ── Models auxiliars per a la lògica de cuinar ──
