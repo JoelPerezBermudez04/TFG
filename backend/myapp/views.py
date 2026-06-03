@@ -441,8 +441,8 @@ class ReceptaViewSet(ViewSet):
                 )
 
         paginator = LimitOffsetPagination()
-        paginator.default_limit = 20
-        paginator.max_limit = 100
+        paginator.default_limit = 500
+        paginator.max_limit = 500
 
         page = paginator.paginate_queryset(qs, request)
         return paginator.get_paginated_response(ReceptaResumSerializer(page, many=True).data)
@@ -623,8 +623,8 @@ class RecomanacioViewSet(ViewSet):
 
         resultats.sort(key=lambda r: r['score'], reverse=True)
         paginator = LimitOffsetPagination()
-        paginator.default_limit = 20
-        paginator.max_limit = 100
+        paginator.default_limit = 500
+        paginator.max_limit = 500
         page = paginator.paginate_queryset(resultats, request)
 
         return paginator.get_paginated_response(RecomanacioSerializer(page, many=True).data)
