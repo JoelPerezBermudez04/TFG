@@ -189,14 +189,8 @@ class ReceptesProvider with ChangeNotifier {
   String? _error;
   int _total = 0;
   int _offset = 0;
-  static const int _limit = 20;
-  bool get hasMore {
-    // Si hi ha filtre local actiu (cerca o múltiples dietes), no paginem automàticament
-    // perquè el filtre ja s'aplica sobre tots els resultats carregats
-    final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
-    if (teFiltreLocal) return false;
-    return _offset < _serverTotal;
-  }
+  static const int _limit = 500;
+  bool get hasMore => !_modeRecomanacions && _producteId != null && _offset < _serverTotal;
   int _serverTotal = 0;
 
   // Filtres actius
@@ -437,11 +431,6 @@ class ReceptesProvider with ChangeNotifier {
         }
         _offset = _totsReceptes.length;
         _aplicarFiltres();
-        if (_offset < _serverTotal) {
-          _isLoading = false;
-          fetchReceptes(loadMore: true);
-          return;
-        }
       } else {
         _error = 'Error carregant receptes';
       }
@@ -538,18 +527,7 @@ class ReceptesProvider with ChangeNotifier {
           _recomanacions = results;
         }
         _offset = _recomanacions.length;
-        // Filtres locals sobre els resultats del servidor
         _aplicarFiltresRecomanacions(notify: false);
-
-        // Paginació automàtica només si no hi ha filtre local de cerca actiu,
-        // ja que el buscador filtra sobre els resultats ja carregats
-        final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
-        if (!teFiltreLocal && _offset < _serverTotal) {
-          _isLoading = false;
-          notifyListeners();
-          _fetchRecomanacions(loadMore: true);
-          return;
-        }
       } else {
         _error = 'Error carregant recomanacions';
       }
