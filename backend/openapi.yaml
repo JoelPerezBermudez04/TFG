@@ -1406,7 +1406,7 @@ paths:
       summary: List all recipes (paginated)
       description: |
         Returns a paginated list of recipe summaries. Supports filtering and `LimitOffsetPagination`
-        (default limit: 20, max: 100).
+        (default limit: 500, max: 500).
       parameters:
         - name: dieta
           in: query
@@ -1436,8 +1436,8 @@ paths:
           in: query
           schema:
             type: integer
-            default: 20
-            maximum: 100
+            default: 500
+            maximum: 500
         - name: offset
           in: query
           schema:
@@ -1557,7 +1557,7 @@ paths:
       summary: Get recipe recommendations based on inventory
       description: |
         Scores all recipes in the database against the user's current inventory and returns them
-        sorted by score descending. Supports `LimitOffsetPagination` (default limit: 20, max: 100).
+        sorted by score descending. Supports `LimitOffsetPagination` (default limit: 500, max: 500).
 
         **Scoring algorithm:**
         - Base score (max 0.85): fraction of recipe ingredients present in the inventory.
@@ -1612,8 +1612,8 @@ paths:
           in: query
           schema:
             type: integer
-            default: 20
-            maximum: 100
+            default: 500
+            maximum: 500
         - name: offset
           in: query
           schema:
