@@ -267,7 +267,33 @@ class ReceptesProvider with ChangeNotifier {
       _aplicarFiltres();
     }
   }
-  void setMaxTemps(int? v) { _maxTemps = v; _aplicarFiltres(); }
+
+  void setMaxTemps(int? v) {
+    _maxTemps = v;
+    if (_modeRecomanacions) {
+      _fetchRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
+
+  void setRecomanacionsFiltres({
+    List<String>? dietes,
+    int? maxTemps,
+    bool? nomesInventari,
+    bool? nomesUrgents,
+  }) {
+    if (dietes != null) _dietes = dietes;
+    _maxTemps = maxTemps;
+    if (nomesInventari != null) _nomesInventari = nomesInventari;
+    if (nomesUrgents != null) _nomesUrgents = nomesUrgents;
+
+    if (_modeRecomanacions) {
+      _fetchRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
 
   // setProducte usa mode B (servidor), no filtre local
   void setProducte(int? id, String? nom) {

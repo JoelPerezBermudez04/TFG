@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../inventari/providers/inventory_provider.dart';
 import '../providers/receptes_provider.dart';
 import 'recepta_detail_screen.dart';
 
@@ -22,6 +23,8 @@ class _ReceptesScreenState extends State<ReceptesScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     final provider = context.read<ReceptesProvider>();
+    final inventory = context.read<InventoryProvider>();
+    inventory.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       provider.fetchReceptes();
       provider.fetchFavorits();
@@ -31,10 +34,19 @@ class _ReceptesScreenState extends State<ReceptesScreen>
 
   @override
   void dispose() {
+    context.read<InventoryProvider>().removeListener(_onInventoryChanged);
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onInventoryChanged() {
+    if (!mounted) return;
+    final provider = context.read<ReceptesProvider>();
+    if (provider.modeRecomanacions) {
+      provider.fetchReceptes();
+    }
   }
 
   void _onScroll() {
@@ -1147,10 +1159,12 @@ class _FiltresSheetState extends State<_FiltresSheet> {
 
   void _aplicar() {
     final p = context.read<ReceptesProvider>();
-    p.setDietes(_dietes.toList());
-    p.setMaxTemps(_maxTemps?.toInt());
-    p.setNomesInventari(_nomesInventari);
-    p.setNomesUrgents(_nomesUrgents);
+    p.setRecomanacionsFiltres(
+      dietes: _dietes.toList(),
+      maxTemps: _maxTemps?.toInt(),
+      nomesInventari: _nomesInventari,
+      nomesUrgents: _nomesUrgents,
+    );
     Navigator.pop(context);
   }
 }

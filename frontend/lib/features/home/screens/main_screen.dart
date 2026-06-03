@@ -247,6 +247,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _api = widget.api ?? ApiService();
+    final inventory = context.read<InventoryProvider>();
+    inventory.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchRecomanacions();
     });
@@ -254,8 +256,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    context.read<InventoryProvider>().removeListener(_onInventoryChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onInventoryChanged() {
+    if (!mounted) return;
+    _fetchRecomanacions();
   }
 
   @override
