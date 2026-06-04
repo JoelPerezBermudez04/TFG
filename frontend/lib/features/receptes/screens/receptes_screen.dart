@@ -17,24 +17,26 @@ class _ReceptesScreenState extends State<ReceptesScreen>
   late TabController _tabController;
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  late final InventoryProvider _inventoryProvider;
+  late final ReceptesProvider _receptesProvider;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final provider = context.read<ReceptesProvider>();
-    final inventory = context.read<InventoryProvider>();
-    inventory.addListener(_onInventoryChanged);
+    _receptesProvider = context.read<ReceptesProvider>();
+    _inventoryProvider = context.read<InventoryProvider>();
+    _inventoryProvider.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      provider.fetchReceptes();
-      provider.fetchFavorits();
+      _receptesProvider.fetchReceptes();
+      _receptesProvider.fetchFavorits();
     });
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    context.read<InventoryProvider>().removeListener(_onInventoryChanged);
+    _inventoryProvider.removeListener(_onInventoryChanged);
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
@@ -43,9 +45,8 @@ class _ReceptesScreenState extends State<ReceptesScreen>
 
   void _onInventoryChanged() {
     if (!mounted) return;
-    final provider = context.read<ReceptesProvider>();
-    if (provider.modeRecomanacions) {
-      provider.fetchReceptes();
+    if (_receptesProvider.modeRecomanacions) {
+      _receptesProvider.fetchReceptes();
     }
   }
 

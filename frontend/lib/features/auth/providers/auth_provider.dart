@@ -62,6 +62,12 @@ class AuthProvider with ChangeNotifier {
     return 'Error de connexió. Comprova la teva xarxa.';
   }
 
+  void _notifyListenersInNextFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasListeners) notifyListeners();
+    });
+  }
+
   Future<bool> login(String username, String password) async {
     _isSubmitting = true;
     _error = null;
@@ -82,7 +88,9 @@ class AuthProvider with ChangeNotifier {
         _user = User.fromJson(data['usuari']);
         _status = AuthStatus.authenticated;
         _isSubmitting = false;
-        notifyListeners();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          notifyListeners();
+        });
         return true;
       } else {
         _error = _parseError(response['body'], 'Error en iniciar sessió');
@@ -107,7 +115,7 @@ class AuthProvider with ChangeNotifier {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         _isSubmitting = false;
-        notifyListeners();
+        _notifyListenersInNextFrame();
         return false;
       }
 
@@ -117,7 +125,7 @@ class AuthProvider with ChangeNotifier {
       if (idToken == null) {
         _error = "No s'ha pogut obtenir el token de Google.";
         _isSubmitting = false;
-        notifyListeners();
+        _notifyListenersInNextFrame();
         return false;
       }
 
@@ -132,19 +140,19 @@ class AuthProvider with ChangeNotifier {
         _user = User.fromJson(data['usuari']);
         _status = AuthStatus.authenticated;
         _isSubmitting = false;
-        notifyListeners();
+        _notifyListenersInNextFrame();
         return true;
       } else {
         _error = _parseError(response['body'], 'Error en iniciar sessió amb Google');
         await _googleSignIn.signOut();
         _isSubmitting = false;
-        notifyListeners();
+        _notifyListenersInNextFrame();
         return false;
       }
     } catch (e) {
       _error = _connectionError(e);
       _isSubmitting = false;
-      notifyListeners();
+      _notifyListenersInNextFrame();
       return false;
     }
   }

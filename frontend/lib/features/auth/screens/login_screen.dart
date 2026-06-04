@@ -47,7 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.read<AuthProvider>();
     final success = await auth.loginWithGoogle();
 
-    if (!success && mounted && auth.error != null) {
+    if (!mounted) return;
+
+    if (!success && auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(auth.error!),

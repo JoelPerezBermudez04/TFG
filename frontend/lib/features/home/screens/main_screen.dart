@@ -237,6 +237,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final ApiService _api;
+  late final InventoryProvider _inventoryProvider;
 
   List<_RecomanacioResumida> _recomanacions = [];
   bool _loadingRec = false;
@@ -247,8 +248,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _api = widget.api ?? ApiService();
-    final inventory = context.read<InventoryProvider>();
-    inventory.addListener(_onInventoryChanged);
+    _inventoryProvider = context.read<InventoryProvider>();
+    _inventoryProvider.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchRecomanacions();
     });
@@ -256,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    context.read<InventoryProvider>().removeListener(_onInventoryChanged);
+    _inventoryProvider.removeListener(_onInventoryChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -270,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Refrescar inventari quan l'app torna al primer pla
     if (state == AppLifecycleState.resumed && mounted) {
-      context.read<InventoryProvider>().fetchInventory();
+      _inventoryProvider.fetchInventory();
     }
   }
 
