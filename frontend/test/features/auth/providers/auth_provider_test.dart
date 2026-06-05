@@ -22,6 +22,7 @@ void main() {
   };
 
   setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
     mockApi = MockApiService();
     provider = AuthProvider(api: mockApi, init: false);
   });

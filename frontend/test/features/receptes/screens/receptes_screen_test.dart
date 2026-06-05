@@ -5,6 +5,7 @@ import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/features/receptes/providers/receptes_provider.dart';
 import 'package:frontend/features/receptes/screens/receptes_screen.dart';
+import 'package:frontend/features/inventari/providers/inventory_provider.dart';
 
 import 'receptes_screen_test.mocks.dart';
 
@@ -30,8 +31,11 @@ void main() {
 
   Widget buildSubject() {
     return MaterialApp(
-      home: ChangeNotifierProvider<ReceptesProvider>.value(
-        value: mockProvider,
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ReceptesProvider>.value(value: mockProvider),
+          ChangeNotifierProvider<InventoryProvider>(create: (_) => InventoryProvider()),
+        ],
         child: const ReceptesScreen(),
       ),
     );
