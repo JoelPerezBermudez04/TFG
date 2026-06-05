@@ -121,7 +121,7 @@ class ReceptaSerializer(serializers.ModelSerializer):
         fields = [
             'id_api', 'nom', 'descripcio', 'imatge_url',
             'temps_preparacio', 'porcions',
-            'instruccions', 'dietes', 'intolerancias',
+            'instruccions', 'dietes',
             'ingredients',
         ]
 
@@ -134,7 +134,7 @@ class ReceptaResumSerializer(serializers.ModelSerializer):
         fields = [
             'id_api', 'nom', 'imatge_url',
             'temps_preparacio', 'porcions',
-            'dietes', 'intolerancias',
+            'dietes',
             'num_ingredients',
         ]
 
@@ -187,7 +187,6 @@ class RecomanacioSerializer(serializers.Serializer):
     temps_preparacio    = serializers.IntegerField()
     porcions            = serializers.IntegerField()
     dietes              = serializers.JSONField()
-    intolerancias       = serializers.JSONField()
     score               = serializers.FloatField()
     ingredients_coberts = serializers.IntegerField()
     total_ingredients   = serializers.IntegerField()

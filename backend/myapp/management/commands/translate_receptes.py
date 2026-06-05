@@ -109,7 +109,6 @@ class Command(BaseCommand):
                 descripcio_en = recepta.descripcio_en or recepta.descripcio
                 instruccions_en = recepta.instruccions_en or recepta.instruccions
                 dietes_en = recepta.dietes_en or recepta.dietes
-                intolerancias_en = recepta.intolerancias_en or recepta.intolerancias
 
                 # ── Tradueix nom ─────────────────────────────────────────────
                 nom_ca = traduir(nom_en, translator)
@@ -139,18 +138,11 @@ class Command(BaseCommand):
                     if dietes_no_mapejades:
                         no_mapejats_globals.update(dietes_no_mapejades)
 
-                # ── Tradueix intoleràncies ["dairy", ...] ─────────────────────
-                intolerancias_ca = None
-                if intolerancias_en:
-                    intolerancias_ca = [traduir(i, translator) for i in intolerancias_en]
-                    self.stdout.write(f'   Intolerancies: {", ".join(intolerancias_ca)}')
-
                 if not dry_run:
                     recepta.nom_en = nom_en
                     recepta.descripcio_en = descripcio_en
                     recepta.instruccions_en = instruccions_en
                     recepta.dietes_en = dietes_en
-                    recepta.intolerancias_en = intolerancias_en
 
                     recepta.nom = nom_ca
                     recepta.descripcio = descripcio_ca
@@ -158,8 +150,6 @@ class Command(BaseCommand):
                         recepta.instruccions = instruccions_ca
                     if dietes_ca is not None:
                         recepta.dietes = dietes_ca
-                    if intolerancias_ca is not None:
-                        recepta.intolerancias = intolerancias_ca
 
                     recepta.save()
                     self.stdout.write(self.style.SUCCESS('   ✓ Guardat'))

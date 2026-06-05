@@ -413,14 +413,11 @@ class ReceptaViewSet(ViewSet):
     def list(self, request):
         qs = Recepta.objects.prefetch_related('ingredientrecepta_set').all()
         dieta = request.query_params.get('dieta')
-        intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
         producte = request.query_params.get('producte')
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
-        if intolerancia:
-            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -551,15 +548,12 @@ class RecomanacioViewSet(ViewSet):
         avui = timezone.now().date()
         qs = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').all()
         dieta = request.query_params.get('dieta')
-        intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
         nomes_inv = request.query_params.get('nomes_inventari', 'false').lower() == 'true'
         nomes_urg = request.query_params.get('nomes_urgents',   'false').lower() == 'true'
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
-        if intolerancia:
-            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -614,7 +608,6 @@ class RecomanacioViewSet(ViewSet):
                 'temps_preparacio' : recepta.temps_preparacio,
                 'porcions' : recepta.porcions,
                 'dietes' : recepta.dietes,
-                'intolerancias' : recepta.intolerancias,
                 'score' : score,
                 'ingredients_coberts' : coberts,
                 'total_ingredients' : len(ings),

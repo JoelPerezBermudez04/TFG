@@ -114,8 +114,6 @@ def extreure_dietes(data):
     return [label for camp, label in DIETES_CAMPS if data.get(camp, False)]
 
 
-def extreure_intolerancias(data):
-    return data.get('diets', [])
 
 
 # ── Instruccions ──────────────────────────────────────────────────────────────
@@ -452,11 +450,10 @@ def _recepta_necessita_actualitzacio(recepta_id):
 
     manca_instruccions = r.instruccions is None
     manca_dietes = r.dietes is None
-    manca_intolerancias = r.intolerancias is None
     manca_porcions = r.porcions == 1
     manca_ingredients = not r.ingredientrecepta_set.exists()
 
-    return any([manca_instruccions, manca_dietes, manca_intolerancias,
+    return any([manca_instruccions, manca_dietes,
                 manca_porcions, manca_ingredients])
 
 
@@ -533,7 +530,7 @@ class Command(BaseCommand):
                                'nom_no_trobat': nom_no_trobat}
 
     def _desar_recepta(self, recepta_id, nom, resum_net, imatge, temps, porcions,
-                       instruccions, dietes, intolerancias, ingredients_no_vinculats_json,
+                       instruccions, dietes, ingredients_no_vinculats_json,
                        ingredients_vinculats):
         """Crea o actualitza la recepta i els seus ingredients. Retorna (recepta, existia)."""
         existia = Recepta.objects.filter(pk=recepta_id).exists()
@@ -551,8 +548,6 @@ class Command(BaseCommand):
                 'instruccions_en': instruccions,
                 'dietes': dietes,
                 'dietes_en': dietes,
-                'intolerancias': intolerancias,
-                'intolerancias_en': intolerancias,
                 'ingredients_no_vinculats': ingredients_no_vinculats_json,
             }
         )
@@ -685,7 +680,6 @@ class Command(BaseCommand):
             porcions = recepta_data.get('servings', 1) or 1
             resum_net = re.sub(r'<[^>]+>', '', recepta_data.get('summary', '')).strip()
             dietes = extreure_dietes(recepta_data)
-            intolerancias = extreure_intolerancias(recepta_data)
             instruccions = extreure_instruccions(recepta_data)
 
             ingredients_vinculats, ingredients_no_trobats, ingredients_no_vinculats_map = \
@@ -713,7 +707,7 @@ class Command(BaseCommand):
             ]
             _, existia = self._desar_recepta(
                 recepta_id, nom, resum_net, imatge, temps, porcions,
-                instruccions, dietes, intolerancias,
+                instruccions, dietes,
                 ingredients_no_vinculats_json, ingredients_vinculats
             )
 
