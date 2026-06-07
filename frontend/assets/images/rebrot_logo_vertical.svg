@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220">
+  <title>Rebrot — Logo Vertical</title>
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&amp;display=swap');
+      .r-name { font-family: 'Nunito', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif; font-weight: 900; font-size: 48px; fill: #085041; text-anchor: middle; }
+      .r-tag  { font-family: 'Nunito', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif; font-weight: 700; font-size: 13px;  fill: #1D9E75; text-anchor: middle; letter-spacing: 0.8px; }
+    </style>
+  </defs>
+  <!-- Icon centrat horitzontalment (120×120, des de x=60) -->
+  <g transform="translate(60,8)">
+    <rect width="120" height="120" rx="28" fill="#1D9E75"/>
+    <!-- Handles (escala 1.2×) -->
+    <rect x="9.6"  y="75.6" width="15.6" height="10.8" rx="5.4" fill="white"/>
+    <rect x="94.8" y="75.6" width="15.6" height="10.8" rx="5.4" fill="white"/>
+    <!-- Pot body -->
+    <path d="M22.8,75.6 L22.8,99.6 Q22.8,109.2 32.4,109.2 L87.6,109.2 Q97.2,109.2 97.2,99.6 L97.2,75.6 Z" fill="white"/>
+    <!-- Lid -->
+    <rect x="18" y="66" width="84" height="12" rx="6" fill="white"/>
+    <!-- Knob -->
+    <circle cx="60" cy="61.2" r="6" fill="white"/>
+    <!-- Stem -->
+    <line x1="60" y1="61.2" x2="60" y2="39.6" stroke="white" stroke-width="3.84" stroke-linecap="round"/>
+    <!-- Left leaf -->
+    <path d="M60,51.6 C51.6,42 38.4,27.6 44.4,14.4 C50.4,24 56.4,38.4 60,51.6 Z" fill="white"/>
+    <!-- Right leaf -->
+    <path d="M60,45.6 C68.4,36 79.2,22.8 74.4,10.8 C67.2,21.6 62.4,34.8 60,45.6 Z" fill="white"/>
+    <!-- Midribs -->
+    <path d="M60,50.4 C52.8,39.6 42,26.4 44.4,14.4" fill="none" stroke="#1D9E75" stroke-width="1.02" stroke-linecap="round" opacity="0.5"/>
+    <path d="M60,44.4 C68.4,34.8 77.4,22.8 74.4,10.8" fill="none" stroke="#1D9E75" stroke-width="1.02" stroke-linecap="round" opacity="0.5"/>
+  </g>
+  <!-- Nom centrat -->
+  <text x="120" y="158" class="r-name">Rebrot</text>
+  <!-- Tagline centrada -->
+  <text x="120" y="183" class="r-tag">el teu rebost intel·ligent</text>
+</svg>

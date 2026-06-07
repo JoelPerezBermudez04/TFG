@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 110">
+  <title>Rebrot — Logo Horitzontal</title>
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&amp;display=swap');
+      .r-name { font-family: 'Nunito', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif; font-weight: 900; font-size: 50px; fill: #085041; }
+      .r-tag  { font-family: 'Nunito', 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif; font-weight: 700; font-size: 14px;  fill: #1D9E75; letter-spacing: 0.8px; }
+    </style>
+  </defs>
+  <!-- Icon (100×100 centrat verticalment en 110px) -->
+  <g transform="translate(5,5)">
+    <rect width="100" height="100" rx="23" fill="#1D9E75"/>
+    <rect x="8"  y="63" width="13" height="9" rx="4.5" fill="white"/>
+    <rect x="79" y="63" width="13" height="9" rx="4.5" fill="white"/>
+    <path d="M19,63 L19,83 Q19,91 27,91 L73,91 Q81,91 81,83 L81,63 Z" fill="white"/>
+    <rect x="15" y="55" width="70" height="10" rx="5" fill="white"/>
+    <circle cx="50" cy="51" r="5" fill="white"/>
+    <line x1="50" y1="51" x2="50" y2="33" stroke="white" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M50,43 C43,35 32,23 37,12 C42,20 47,32 50,43 Z" fill="white"/>
+    <path d="M50,38 C57,30 66,19 62,9 C56,18 52,29 50,38 Z" fill="white"/>
+    <path d="M50,42 C44,33 35,22 37,12" fill="none" stroke="#1D9E75" stroke-width="0.85" stroke-linecap="round" opacity="0.5"/>
+    <path d="M50,37 C57,29 64,19 62,9"  fill="none" stroke="#1D9E75" stroke-width="0.85" stroke-linecap="round" opacity="0.5"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="122" y="63" class="r-name">Rebrot</text>
+  <text x="124" y="84" class="r-tag">el teu rebost intel·ligent</text>
+</svg>

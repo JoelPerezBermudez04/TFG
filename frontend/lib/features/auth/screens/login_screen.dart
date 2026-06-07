@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -72,15 +73,14 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 60),
                 // Logo
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: Text('🥦', style: TextStyle(fontSize: 48)),
+                Center(
+                  child: Transform.translate(
+                    offset: Offset(25, 0), // mou cap a la dreta
+                    child: Image.asset(
+                      'assets/images/rebrot_logo.png',
+                      height: 100,
+                      fit: BoxFit.fitHeight,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
