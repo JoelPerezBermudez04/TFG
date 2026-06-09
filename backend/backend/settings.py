@@ -115,7 +115,7 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': 'ep-jolly-cloud-alm2kmi0.c-3.eu-central-1.aws.neon.tech',#'ep-jolly-cloud-alm2kmi0.c-3.eu-central-1.aws.neon.tech',#'localhost'
+        'HOST': os.getenv('HOST'),
         'PORT': '5432',
         'OPTIONS': {
             'sslmode': 'require',
