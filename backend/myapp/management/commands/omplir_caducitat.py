@@ -1,0 +1,822 @@
+"""
+Script per inserir dies_caducitat_aprox a tots els productes.
+Execució:
+    pip install psycopg2-binary python-dotenv
+    python omplir_caducitat.py
+"""
+import os
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DIES_CADUCITAT = {
+    202: 7,
+    203: 730,
+    204: 7,
+    205: 730,
+    206: 7,
+    207: 10,
+    208: 10,
+    209: 10,
+    210: 10,
+    211: 10,
+    212: 7,
+    213: 7,
+    214: 7,
+    215: 10,
+    216: 7,
+    217: 10,
+    218: 10,
+    219: 10,
+    220: 7,
+    221: 7,
+    222: 10,
+    223: 10,
+    224: 180,
+    225: 180,
+    226: 10,
+    227: 730,
+    228: 10,
+    229: 730,
+    230: 730,
+    231: 7,
+    232: 10,
+    233: 10,
+    234: 10,
+    235: 730,
+    236: 7,
+    237: 7,
+    238: 5,
+    239: 365,
+    240: 365,
+    241: 5,
+    242: 5,
+    243: 5,
+    244: 5,
+    245: 7,
+    246: 5,
+    247: 5,
+    248: 7,
+    249: 7,
+    250: 7,
+    251: 7,
+    252: 5,
+    253: 5,
+    254: 5,
+    255: 7,
+    256: 10,
+    257: 10,
+    258: 730,
+    259: 730,
+    260: 10,
+    261: 10,
+    262: 10,
+    264: 10,
+    265: 10,
+    266: 5,
+    267: 5,
+    268: 5,
+    269: 5,
+    270: 5,
+    271: 10,
+    272: 10,
+    273: 10,
+    274: 7,
+    275: 7,
+    276: 730,
+    277: 10,
+    278: 10,
+    279: 10,
+    280: 7,
+    281: 180,
+    282: 7,
+    283: 7,
+    284: 7,
+    285: 5,
+    286: 5,
+    287: 5,
+    288: 365,
+    289: 365,
+    290: 365,
+    291: 14,
+    292: 365,
+    293: 365,
+    294: 365,
+    295: 365,
+    296: 7,
+    297: 7,
+    298: 7,
+    299: 7,
+    300: 10,
+    301: 14,
+    302: 14,
+    303: 14,
+    304: 365,
+    305: 365,
+    306: 14,
+    307: 14,
+    308: 14,
+    309: 14,
+    310: 14,
+    311: 7,
+    312: 365,
+    313: 7,
+    314: 365,
+    315: 365,
+    316: 14,
+    317: 14,
+    318: 365,
+    319: 365,
+    320: 14,
+    321: 180,
+    322: 180,
+    323: 180,
+    324: 365,
+    325: 365,
+    326: 14,
+    327: 365,
+    328: 730,
+    329: 14,
+    330: 14,
+    331: 7,
+    332: 14,
+    333: 7,
+    334: 7,
+    335: 7,
+    336: 365,
+    337: 7,
+    338: 14,
+    339: 365,
+    340: 365,
+    341: 14,
+    342: 14,
+    343: 14,
+    344: 10,
+    345: 14,
+    346: 14,
+    347: 365,
+    348: 14,
+    349: 14,
+    350: 7,
+    351: 365,
+    352: 365,
+    353: 7,
+    354: 365,
+    355: 14,
+    356: 7,
+    357: 14,
+    358: 365,
+    359: 365,
+    360: 7,
+    361: 365,
+    362: 7,
+    363: 365,
+    364: 180,
+    365: 7,
+    366: 365,
+    367: 7,
+    368: 365,
+    369: 365,
+    370: 7,
+    371: 365,
+    372: 365,
+    373: 365,
+    374: 7,
+    375: 7,
+    376: 365,
+    377: 7,
+    378: 14,
+    379: 14,
+    380: 365,
+    381: 365,
+    382: 365,
+    398: 7,
+    403: 2,
+    404: 2,
+    405: 2,
+    406: 2,
+    407: 730,
+    408: 2,
+    409: 730,
+    410: 730,
+    412: 2,
+    413: 2,
+    414: 2,
+    415: 2,
+    417: 2,
+    418: 14,
+    419: 14,
+    420: 2,
+    421: 2,
+    422: 2,
+    423: 730,
+    424: 2,
+    425: 2,
+    426: 2,
+    427: 2,
+    428: 2,
+    429: 7,
+    430: 2,
+    431: 2,
+    432: 2,
+    433: 2,
+    434: 2,
+    435: 14,
+    436: 2,
+    437: 14,
+    438: 2,
+    439: 2,
+    440: 2,
+    441: 2,
+    442: 14,
+    443: 730,
+    444: 730,
+    445: 2,
+    446: 2,
+    447: 2,
+    448: 2,
+    449: 2,
+    450: 2,
+    451: 2,
+    452: 2,
+    453: 21,
+    454: 21,
+    455: 21,
+    456: 21,
+    457: 14,
+    459: 7,
+    460: 365,
+    461: 365,
+    462: 30,
+    463: 30,
+    464: 365,
+    466: 730,
+    467: 30,
+    468: 30,
+    469: 30,
+    470: 30,
+    471: 30,
+    472: 21,
+    473: 21,
+    474: 21,
+    475: 21,
+    476: 21,
+    477: 14,
+    478: 14,
+    479: 14,
+    480: 30,
+    481: 14,
+    482: 14,
+    483: 7,
+    484: 7,
+    485: 14,
+    486: 30,
+    487: 30,
+    488: 30,
+    489: 30,
+    490: 30,
+    491: 30,
+    492: 30,
+    493: 30,
+    494: 30,
+    495: 30,
+    496: 365,
+    497: 30,
+    498: 30,
+    499: 14,
+    500: 14,
+    501: 14,
+    502: 14,
+    503: 14,
+    504: 14,
+    505: 14,
+    506: 14,
+    507: 730,
+    508: 730,
+    509: 730,
+    510: 730,
+    511: 730,
+    512: 730,
+    513: 730,
+    514: 730,
+    515: 730,
+    516: 730,
+    517: 730,
+    518: 730,
+    519: 730,
+    520: 730,
+    521: 730,
+    522: 730,
+    523: 180,
+    524: 5,
+    525: 730,
+    526: 180,
+    527: 730,
+    528: 730,
+    529: 730,
+    530: 730,
+    531: 4,
+    532: 730,
+    533: 730,
+    534: 730,
+    535: 730,
+    536: 730,
+    537: 730,
+    538: 730,
+    539: 730,
+    540: 730,
+    541: 730,
+    542: 730,
+    543: 730,
+    544: 730,
+    545: 730,
+    546: 730,
+    547: 730,
+    548: 730,
+    549: 730,
+    550: 730,
+    551: 730,
+    552: 730,
+    553: 730,
+    554: 730,
+    555: 730,
+    556: 730,
+    557: 730,
+    559: 4,
+    560: 730,
+    561: 180,
+    562: 180,
+    563: 180,
+    564: 180,
+    565: 730,
+    566: 730,
+    567: 730,
+    568: 730,
+    569: 730,
+    574: 3,
+    575: 3,
+    576: 3,
+    577: 3,
+    578: 3,
+    579: 3,
+    580: 3,
+    581: 3,
+    582: 3,
+    583: 3,
+    584: 3,
+    585: 3,
+    586: 3,
+    587: 3,
+    588: 3,
+    590: 3,
+    591: 3,
+    592: 3,
+    593: 3,
+    594: 3,
+    595: 3,
+    596: 3,
+    597: 3,
+    598: 3,
+    599: 3,
+    600: 3,
+    601: 3,
+    602: 5,
+    603: 3,
+    604: 3,
+    605: 3,
+    606: 3,
+    607: 3,
+    608: 3,
+    609: 14,
+    610: 14,
+    611: 14,
+    613: 14,
+    614: 14,
+    615: 14,
+    616: 14,
+    617: 14,
+    618: 14,
+    619: 14,
+    620: 14,
+    621: 14,
+    622: 14,
+    623: 14,
+    624: 14,
+    625: 3,
+    626: 14,
+    627: 14,
+    628: 3,
+    629: 5,
+    630: 3,
+    631: 3,
+    632: 3,
+    633: 3,
+    634: 3,
+    635: 3,
+    636: 3,
+    637: 3,
+    638: 3,
+    639: 3,
+    640: 3,
+    641: 3,
+    642: 730,
+    643: 730,
+    644: 730,
+    645: 730,
+    646: 730,
+    647: 730,
+    648: 730,
+    649: 730,
+    650: 730,
+    651: 730,
+    652: 730,
+    653: 730,
+    654: 730,
+    655: 730,
+    656: 365,
+    657: 365,
+    658: 365,
+    659: 365,
+    660: 7,
+    661: 365,
+    662: 365,
+    663: 90,
+    664: 90,
+    665: 90,
+    666: 90,
+    667: 90,
+    668: 730,
+    670: 730,
+    671: 365,
+    672: 365,
+    673: 730,
+    674: 730,
+    675: 730,
+    676: 180,
+    677: 7,
+    678: 730,
+    679: 730,
+    680: 14,
+    681: 30,
+    682: 730,
+    683: 730,
+    684: 730,
+    685: 730,
+    686: 730,
+    687: 730,
+    688: 730,
+    689: 730,
+    690: 730,
+    691: 7,
+    692: 730,
+    693: 730,
+    694: 730,
+    695: 730,
+    696: 730,
+    697: 7,
+    698: 730,
+    699: 730,
+    700: 730,
+    701: 730,
+    702: 730,
+    703: 5,
+    705: 730,
+    706: 730,
+    707: 365,
+    708: 365,
+    709: 365,
+    710: 365,
+    711: 365,
+    712: 365,
+    713: 365,
+    714: 365,
+    715: 365,
+    716: 365,
+    717: 365,
+    718: 365,
+    719: 365,
+    720: 7,
+    721: 730,
+    722: 365,
+    723: 365,
+    724: 365,
+    725: 365,
+    726: 365,
+    727: 365,
+    728: 365,
+    729: 365,
+    730: 365,
+    731: 365,
+    732: 180,
+    733: 365,
+    734: 365,
+    735: 365,
+    736: 180,
+    737: 365,
+    738: 365,
+    739: 365,
+    740: 365,
+    741: 365,
+    742: 730,
+    743: 365,
+    744: 180,
+    745: 180,
+    746: 180,
+    747: 180,
+    748: 7,
+    749: 5,
+    750: 730,
+    752: 730,
+    753: 365,
+    754: 365,
+    755: 365,
+    756: 730,
+    757: 365,
+    758: 365,
+    759: 365,
+    760: 365,
+    761: 365,
+    762: 730,
+    763: 730,
+    764: 730,
+    765: 730,
+    766: 730,
+    767: 365,
+    768: 730,
+    769: 5,
+    770: 14,
+    771: 730,
+    772: 5,
+    773: 730,
+    774: 5,
+    775: 5,
+    776: 730,
+    777: 5,
+    778: 5,
+    779: 7,
+    780: 730,
+    781: 7,
+    782: 7,
+    783: 7,
+    784: 730,
+    785: 730,
+    786: 730,
+    787: 730,
+    788: 730,
+    789: 730,
+    790: 730,
+    791: 730,
+    792: 730,
+    793: 730,
+    794: 730,
+    795: 730,
+    796: 730,
+    # Nous productes (797-940)
+    797: 7,      # Julivert (herba fresca)
+    798: 7,      # Alfàbrega fresca
+    799: 7,      # Coriandre (herba fresca)
+    800: 7,      # Cibulet
+    801: 7,      # Estragó
+    802: 7,      # Menta
+    803: 7,      # Marduix
+    804: 21,     # Gingebre (arrel fresca)
+    805: 730,    # Pebre de caiena mòlt (espècia seca)
+    806: 730,    # Xili en pols
+    807: 730,    # Curry en pols
+    808: 730,    # Coriandre mòlt
+    809: 730,    # Gingebre en pols
+    810: 730,    # Garam masala
+    811: 730,    # Cardamom
+    812: 730,    # Nou moscada
+    813: 365,    # Midó de blat de moro
+    814: 365,    # Llevat en pols
+    815: 730,    # Bicarbonat de sodi
+    816: 730,    # Vinagre balsàmic
+    817: 730,    # Salsa worcestershire
+    818: 365,    # Oli d'alfàbrega
+    819: 180,    # Pesto d'alfàbrega
+    820: 7,      # Alfàbrega tailandesa (fresca)
+    821: 730,    # Alfàbrega seca
+    822: 14,     # Pebre de caiena fresc
+    823: 730,    # Extracte de vainilla
+    824: 730,    # Extracte de vainilla bourbon
+    825: 730,    # Vainilla artificial
+    826: 730,    # Cacau en pols
+    827: 730,    # Cacau en pols processat holandès
+    828: 365,    # Miso
+    829: 365,    # Miso vermell
+    830: 365,    # Miso blanc
+    831: 365,    # Miso groc
+    832: 730,    # Salsa teriyaki
+    833: 730,    # Sriracha
+    834: 365,    # Tàperes
+    835: 30,     # Carbassa butternut
+    836: 30,     # Moniato
+    837: 7,      # Puré de moniato (preparat)
+    838: 5,      # Fulles de moniato
+    839: 365,    # Fideus de moniato (sec)
+    840: 30,     # Moniato blanc
+    841: 14,     # Col
+    842: 14,     # Col vermella
+    843: 14,     # Col napa
+    844: 7,      # Fulles de col napa
+    845: 14,     # Col de savoia
+    846: 7,      # Kale
+    847: 7,      # Kale lacinat
+    848: 7,      # Mongetes verdes
+    849: 5,      # Mongetes verdes fresques
+    850: 7,      # Mongetes verdes de caupí
+    851: 365,    # Mongetes verdes en escabetx
+    852: 5,      # Haricots verts (fresques)
+    853: 21,     # Nap
+    854: 21,     # Naps
+    855: 7,      # Cebes tendra
+    856: 30,     # Escalunya
+    857: 30,     # Escalunya de plàtan
+    858: 14,     # Pebrot
+    859: 730,    # Chile arbol sec
+    860: 14,     # Pebrot vermell
+    861: 14,     # Xili tailandès
+    862: 730,    # Pebrot ancho (sec)
+    863: 14,     # Pebrot jalapeño
+    864: 365,    # Gelatina de jalapeño
+    865: 180,    # Salsa verda calenta
+    866: 14,     # Jalapeño vermell
+    867: 365,    # Jalapeños en escabetx
+    868: 5,      # Alvocat
+    869: 365,    # Oli d'alvocat
+    870: 3,      # Meitats d'alvocat (tallat)
+    871: 7,      # Fulles d'alvocat
+    872: 2,      # Daus d'alvocat (tallat)
+    873: 21,     # Calç (llima)
+    874: 180,    # Llimada (beguda)
+    875: 365,    # Pell de llima (seca)
+    876: 14,     # Mató de llima
+    877: 21,     # Suc de llima
+    878: 14,     # Formatge ricotta
+    879: 90,     # Formatge ricotta salata
+    880: 14,     # Formatge ricotta sense greix
+    881: 14,     # Formatge ricotta baix en greix
+    882: 180,    # Mantega clarificada
+    883: 730,    # Mongetes canellini (seques)
+    884: 730,    # Mongetes canellini seques
+    885: 365,    # Mongetes canellini en conserva
+    886: 730,    # Pasta curta
+    887: 7,      # Macarrons i formatge (preparat)
+    888: 730,    # Macarrons de colze
+    889: 5,      # Pasta curta cuita
+    890: 730,    # Macarrons sense gluten
+    891: 730,    # Farina de civada instantània
+    892: 730,    # Civada tallada acer
+    893: 180,    # Granola
+    894: 180,    # Muesli
+    895: 30,     # Granola casolana
+    896: 180,    # Granola sense gluten
+    897: 14,     # Brou d'os (fresc)
+    898: 14,     # Brou de vedella baix en sodi
+    899: 14,     # Brou de vedella sense greixos menys sodi
+    900: 730,    # Base de pollastre (concentrat)
+    901: 730,    # Brou de pollastre en pols
+    902: 365,    # Olives
+    903: 365,    # Olives gregues
+    904: 365,    # Olives negres
+    905: 365,    # Olives verdes
+    906: 365,    # Olives verdes farcides de piment
+    907: 365,    # Olives kalamata
+    908: 730,    # Sal
+    909: 730,    # Pebre blanc
+    910: 365,    # Farina
+    911: 730,    # Salsa d'ostres
+    912: 730,    # Xarop d'auró
+    913: 730,    # Xarop de panqueques sense sucre
+    914: 730,    # Oli de coco
+    915: 365,    # Passata
+    916: 180,    # Salsa
+    917: 180,    # Salsa verda
+    918: 365,    # Condiment italià
+    919: 7,      # Tomàquets
+    920: 14,     # Pebrot verd
+    921: 730,    # Grans de pebre verd (secs)
+    922: 14,     # Ceba vermella
+    923: 14,     # Ceba vermella perlada
+    924: 7,      # Cols de brussel·les
+    925: 5,      # Mores
+    926: 365,    # Melmelada de móres
+    927: 14,     # Suc de mora
+    928: 365,    # Nabius secs
+    929: 365,    # Mongetes de nabius secs
+    930: 30,     # Formatge feta
+    931: 30,     # Formatge feta reduït en greix
+    932: 30,     # Formatge feta sense greix
+    933: 180,    # Pacanes
+    934: 180,    # Pacanes confitades
+    935: 180,    # Peces de pacana
+    936: 730,    # Llavors de chía
+    937: 14,     # Pebrot de plàtan
+    938: 7,      # Tomàquet pruna
+    939: 7,      # Savi (herba fresca)
+    940: 7,      # Anet (herba fresca)
+    # Nous productes (941-1019)
+    941: 730,    # Linguine (pasta seca)
+    942: 730,    # Penne (pasta seca)
+    943: 730,    # Orecchiette (pasta seca)
+    944: 730,    # Farina de blat de moro (cornflour)
+    945: 730,    # Grits
+    946: 5,      # Tofu extraferm (fresc)
+    947: 730,    # Splenda
+    948: 730,    # Pasta de vainilla
+    949: 730,    # Vaina de vainilla
+    950: 730,    # Extracte d'ametlla
+    951: 730,    # Salsa tabasco
+    952: 365,    # Mirin
+    953: 365,    # Vermut
+    954: 730,    # Oli de canola
+    955: 180,    # Vinagreta
+    956: 365,    # Relish
+    957: 365,    # Cogombrets en vinagre
+    958: 180,    # Pasta de curry
+    959: 730,    # Cubets de brou de vedella
+    960: 730,    # Condiment per a marisc
+    961: 730,    # Old Bay seasoning
+    962: 730,    # Vegeta (condiment)
+    963: 730,    # Llavors de fenigrec
+    964: 730,    # Cúrcuma
+    965: 730,    # Asafètida
+    966: 730,    # Safrà
+    967: 730,    # Llavors de cànem
+    968: 730,    # Herbes aromàtiques
+    969: 730,    # Condiment genèric
+    970: 7,      # Ceballots (frescos)
+    971: 7,      # Endívia belga (fresca)
+    972: 14,     # Tomatillo
+    973: 5,      # Panolles de blat de moro baby
+    974: 30,     # Nyames
+    975: 14,     # Patates Yukon Gold
+    976: 14,     # Patates noves
+    977: 5,      # Microverds (frescos)
+    978: 5,      # Ruca (fresca)
+    979: 5,      # Brots de pèsol (frescos)
+    980: 7,      # Taronges Cara Cara
+    981: 3,      # Carn de vedella per guisar (fresca)
+    982: 3,      # Pollastre per rostir (fresc)
+    983: 5,      # Pernil cuit
+    984: 2,      # Vieres (fresques)
+    985: 2,      # Gambes grans (fresques)
+    986: 180,    # Ghee (clarificat)
+    987: 14,     # Formatge Pepper Jack
+    988: 7,      # Tzatziki
+    989: 7,      # Panets d'hamburguesa
+    990: 30,     # Croutons
+    991: 3,      # Massa per quiche (fresca)
+    992: 3,      # Base de pasta (fresca)
+    993: 730,    # Nèctar d'atzavara
+    994: 730,    # Estèvia
+    995: 365,    # Salsa de xili
+    996: 180,    # Nuoc cham
+    997: 14,     # Bitxos llargs (frescos)
+    998: 7,      # Half-and-half (llet i nata)
+    999: 730,    # Brandy
+    1000: 180,   # Salsa marinara
+    1001: 365,   # Peperoncini
+    1002: 21,    # Xirivia (fresca)
+    1003: 14,    # Fonoll (fresc)
+    1004: 3,     # Tilàpia (fresca)
+    1005: 730,   # Llevat sec
+    1006: 30,    # Xips de truita de blat de moro
+    1007: 30,    # Truites fregides al forn
+    1008: 30,    # Cullerades de truita xips
+    1009: 30,    # Doritos de formatge nacho
+    1010: 30,    # Xips de truita de tres colors
+    1011: 180,   # Embolcalls de rotlle de primavera
+    1012: 3,     # Croissant (fresc)
+    1013: 3,     # Croissant sense gluten (fresc)
+    1014: 365,   # Harissa
+    1015: 730,   # Aigua amb gas
+    1017: 3,     # 95% vedella mòlta magra (fresca)
+    1019: 14,    # Poma mcintosh
+}
+
+def main():
+    conn = psycopg2.connect(
+        host='ep-jolly-cloud-alm2kmi0.c-3.eu-central-1.aws.neon.tech',
+        port=5432,
+        dbname=os.getenv('DB_NAME'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+    )
+    cursor = conn.cursor()
+    updated = 0
+    for product_id, dies in DIES_CADUCITAT.items():
+        cursor.execute(
+            'UPDATE myapp_producte SET dies_caducitat_aprox = %s WHERE id = %s',
+            (dies, int(product_id)),
+        )
+        updated += cursor.rowcount
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(f'✅ {updated} productes actualitzats correctament.')
+
+if __name__ == '__main__':
+    main()

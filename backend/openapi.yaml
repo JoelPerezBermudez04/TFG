@@ -1,0 +1,1636 @@
+openapi: 3.0.3
+info:
+  title: Food Inventory & Recipe API
+  description: |
+    REST API for managing a personal food inventory, shopping list, recipes and favourites.
+
+    ## Authentication
+    The API uses **JWT Bearer tokens**. Obtain a token pair via `/usuaris/login/` or `/usuaris/registre/`
+    and include the access token in every subsequent request:
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    Access tokens expire after 30 minutes. Use `/usuaris/refresh-token/` to get a new pair.
+
+    ## Permissions
+    | Role | Capabilities |
+    |------|-------------|
+    | Any (unauthenticated) | `POST /usuaris/registre/`, `POST /usuaris/login/`, `POST /usuaris/refresh-token/`, `POST /usuaris/google/` |
+    | Authenticated user | All other endpoints (own data only) |
+    | Admin | Create / update / delete products (`/productes/`) |
+  version: 1.1.0
+
+servers:
+  - url: https://tfg-zgqg.onrender.com
+    description: Production server (Render)
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Registration, login, logout and token management
+  - name: Users
+    description: User profile management
+  - name: Products
+    description: Product catalogue (read for all users, write for admins)
+  - name: Categories
+    description: Product categories
+  - name: Inventory
+    description: Personal food inventory
+  - name: Shopping List
+    description: Personal shopping list
+  - name: Recipes
+    description: Recipe catalogue
+  - name: Favourites
+    description: Saved favourite recipes
+  - name: Recommendations
+    description: Recipe recommendations scored by inventory coverage and expiry urgency
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    # ── Tokens ────────────────────────────────────────────────────────────────
+    TokenPair:
+      type: object
+      properties:
+        access:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    # ── User ──────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        provider:
+          type: string
+          enum: [LOCAL, GOOGLE]
+          example: LOCAL
+        dies_avis_caducitat:
+          type: integer
+          description: Days before expiry to trigger alerts. 0 = only already-expired items.
+          example: 5
+
+    UserWithTokens:
+      type: object
+      properties:
+        usuari:
+          $ref: '#/components/schemas/User'
+        tokens:
+          $ref: '#/components/schemas/TokenPair'
+
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: securepass123
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: johndoe
+        password:
+          type: string
+          format: password
+          example: securepass123
+
+    GoogleLoginRequest:
+      type: object
+      required: [id_token]
+      properties:
+        id_token:
+          type: string
+          description: Google OAuth2 ID token obtained from the client-side Google Sign-In flow.
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+
+    EditUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: newusername
+        email:
+          type: string
+          format: email
+          example: newemail@example.com
+        dies_avis_caducitat:
+          type: integer
+          minimum: 0
+          example: 3
+
+    ChangePasswordRequest:
+      type: object
+      required: [password_actual, password_nou]
+      properties:
+        password_actual:
+          type: string
+          format: password
+          example: oldpassword123
+        password_nou:
+          type: string
+          format: password
+          minLength: 8
+          example: newpassword456
+
+    DeleteAccountRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          format: password
+          description: Required for LOCAL accounts. Not required for GOOGLE accounts.
+          example: mypassword123
+
+    # ── Category ──────────────────────────────────────────────────────────────
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nom:
+          type: string
+          example: Làctics
+        emoji:
+          type: string
+          example: 🧀
+
+    # ── Product ───────────────────────────────────────────────────────────────
+    UnitEnum:
+      type: string
+      enum: [g, kg, ml, L, unitat, unitats]
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        nom:
+          type: string
+          example: Llet sencera
+        categoria:
+          type: integer
+          description: Category ID
+          example: 2
+        categoria_nom:
+          type: string
+          readOnly: true
+          example: Làctics
+        emoji:
+          type: string
+          example: 🥛
+        imatge_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://example.com/images/milk.jpg
+        alias_api:
+          type: object
+          nullable: true
+          description: Spoonacular API metadata
+          example:
+            id: 1077
+            nom_en: whole milk
+            imatge: milk.jpg
+        dies_caducitat_aprox:
+          type: integer
+          nullable: true
+          description: Approximate shelf life in days
+          example: 7
+        sinonims:
+          type: object
+          nullable: true
+          description: Known synonyms for matching
+
+    ProductWriteRequest:
+      type: object
+      required: [nom, categoria]
+      properties:
+        nom:
+          type: string
+          example: Llet sencera
+        categoria:
+          type: integer
+          example: 2
+        emoji:
+          type: string
+          example: 🥛
+        imatge_url:
+          type: string
+          format: uri
+          nullable: true
+        alias_api:
+          type: object
+          nullable: true
+
+    # ── Inventory ─────────────────────────────────────────────────────────────
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        usuari:
+          type: integer
+          readOnly: true
+        producte:
+          type: integer
+          example: 5
+        producte_nom:
+          type: string
+          readOnly: true
+          example: Llet sencera
+        producte_emoji:
+          type: string
+          readOnly: true
+          example: 🥛
+        producte_imatge_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        producte_categoria_id:
+          type: integer
+          readOnly: true
+          example: 2
+        producte_categoria_nom:
+          type: string
+          readOnly: true
+          example: Làctics
+        producte_categoria_emoji:
+          type: string
+          readOnly: true
+          example: 🧀
+        quantitat:
+          type: number
+          example: 1.5
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        data_caducitat:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-06-01"
+        data_afegit:
+          type: string
+          format: date-time
+          readOnly: true
+        caducat:
+          type: boolean
+          readOnly: true
+          description: True if expiry date is in the past
+
+    InventoryWriteRequest:
+      type: object
+      required: [producte, quantitat, unitat]
+      properties:
+        producte:
+          type: integer
+          example: 5
+        quantitat:
+          type: number
+          example: 1.5
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        data_caducitat:
+          type: string
+          format: date
+          nullable: true
+          example: "2025-06-01"
+
+    InventoryEditRequest:
+      type: object
+      properties:
+        quantitat:
+          type: number
+          example: 2.0
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        data_caducitat:
+          type: string
+          format: date
+          nullable: true
+
+    # ── Shopping List ─────────────────────────────────────────────────────────
+    ShoppingItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        usuari:
+          type: integer
+          readOnly: true
+        producte:
+          type: integer
+          example: 5
+        producte_nom:
+          type: string
+          readOnly: true
+          example: Llet sencera
+        quantitat:
+          type: number
+          example: 2
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        comprat:
+          type: boolean
+          default: false
+          description: Whether the item has been purchased
+        data_afegit:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ShoppingWriteRequest:
+      type: object
+      required: [producte, quantitat, unitat]
+      properties:
+        producte:
+          type: integer
+          example: 5
+        quantitat:
+          type: number
+          example: 2
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        comprat:
+          type: boolean
+          default: false
+
+    # ── Recipe ────────────────────────────────────────────────────────────────
+    RecipeIngredient:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        producte:
+          type: integer
+          example: 5
+        producte_nom:
+          type: string
+          readOnly: true
+          example: Llet sencera
+        producte_emoji:
+          type: string
+          readOnly: true
+          example: 🥛
+        producte_imatge_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        quantitat:
+          type: number
+          example: 200
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        nom_original:
+          type: string
+          description: Original ingredient name as returned by the external API
+          example: whole milk
+
+    RecipeSummary:
+      type: object
+      description: Compact recipe representation used in list views
+      properties:
+        id_api:
+          type: string
+          description: Primary key — Spoonacular recipe ID
+          example: "716429"
+        nom:
+          type: string
+          example: Pasta with Garlic, Scallions, Cauliflower & Breadcrumbs
+        imatge_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://spoonacular.com/recipeImages/716429-556x370.jpg
+        temps_preparacio:
+          type: integer
+          description: Preparation time in minutes
+          example: 45
+        porcions:
+          type: integer
+          example: 2
+        dietes:
+          type: array
+          items:
+            type: string
+          nullable: true
+          example: [vegetarià, vegà]
+        intolerancias:
+          type: array
+          items:
+            type: string
+          nullable: true
+          example: [gluten]
+        num_ingredients:
+          type: integer
+          readOnly: true
+          description: Total number of linked ingredients
+          example: 8
+
+    RecipeDetail:
+      type: object
+      description: Full recipe representation including ingredients and instructions
+      properties:
+        id_api:
+          type: string
+          example: "716429"
+        nom:
+          type: string
+          example: Pasta with Garlic, Scallions, Cauliflower & Breadcrumbs
+        descripcio:
+          type: string
+          example: A quick and healthy pasta dish.
+        imatge_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://spoonacular.com/recipeImages/716429-556x370.jpg
+        temps_preparacio:
+          type: integer
+          example: 45
+        porcions:
+          type: integer
+          example: 2
+        instruccions:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example: ["Boil pasta.", "Sauté garlic.", "Combine and serve."]
+        dietes:
+          type: array
+          items:
+            type: string
+          nullable: true
+          example: [vegetarià]
+        intolerancias:
+          type: array
+          items:
+            type: string
+          nullable: true
+          example: [gluten]
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeIngredient'
+
+    PaginatedRecipeSummary:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 120
+        next:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://tfg-zgqg.onrender.com/receptes/?limit=20&offset=20"
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeSummary'
+
+    # ── Favourite ─────────────────────────────────────────────────────────────
+    Favourite:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        usuari:
+          type: integer
+          readOnly: true
+        recepta:
+          type: string
+          description: Recipe id_api
+          example: "716429"
+        recepta_nom:
+          type: string
+          readOnly: true
+          example: Pasta with Garlic, Scallions, Cauliflower & Breadcrumbs
+        recepta_imatge_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        recepta_temps_preparacio:
+          type: integer
+          readOnly: true
+          example: 45
+        recepta_dietes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+          nullable: true
+        data_guardat:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FavouriteWriteRequest:
+      type: object
+      required: [recepta]
+      properties:
+        recepta:
+          type: string
+          description: Recipe id_api to save as favourite
+          example: "716429"
+
+    # ── Recommendations ───────────────────────────────────────────────────────
+    RecommendationIngredient:
+      type: object
+      properties:
+        producte_id:
+          type: integer
+          example: 5
+        producte_nom:
+          type: string
+          example: Llet sencera
+        producte_emoji:
+          type: string
+          example: 🥛
+        quantitat:
+          type: number
+          example: 200
+        unitat:
+          $ref: '#/components/schemas/UnitEnum'
+        al_inventari:
+          type: boolean
+          description: Whether this ingredient is currently in the user's inventory
+          example: true
+        dies_caducitat:
+          type: integer
+          nullable: true
+          description: Days until the inventory item expires (null if no expiry date set)
+          example: 3
+
+    Recommendation:
+      type: object
+      properties:
+        id_api:
+          type: string
+          example: "716429"
+        nom:
+          type: string
+          example: Pasta with Garlic, Scallions, Cauliflower & Breadcrumbs
+        imatge_url:
+          type: string
+          format: uri
+          nullable: true
+          example: https://spoonacular.com/recipeImages/716429-556x370.jpg
+        temps_preparacio:
+          type: integer
+          example: 45
+        porcions:
+          type: integer
+          example: 2
+        dietes:
+          type: array
+          items:
+            type: string
+          nullable: true
+        intolerancias:
+          type: array
+          items:
+            type: string
+          nullable: true
+        score:
+          type: number
+          format: float
+          description: |
+            Score between 0 and 1. Computed as:
+            - Up to 0.85 based on the fraction of ingredients covered by the inventory.
+            - Up to 0.15 bonus for ingredients expiring within `dies_avis_caducitat` days (urgency bonus).
+          example: 0.8925
+        ingredients_coberts:
+          type: integer
+          description: Number of ingredients present in the user's inventory
+          example: 6
+        total_ingredients:
+          type: integer
+          description: Total number of ingredients in the recipe
+          example: 8
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendationIngredient'
+
+    PaginatedRecommendation:
+      type: object
+      properties:
+        count:
+          type: integer
+          example: 35
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+
+    # ── Errors ────────────────────────────────────────────────────────────────
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Credencials incorrectes.
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  # ════════════════════════════════════════════════════════════════════
+  # AUTH
+  # ════════════════════════════════════════════════════════════════════
+
+  /usuaris/registre/:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTokens'
+        '400':
+          description: Validation error (e.g. username already taken, weak password)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /usuaris/login/:
+    post:
+      tags: [Auth]
+      summary: Log in and obtain JWT tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTokens'
+        '400':
+          description: Missing username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /usuaris/google/:
+    post:
+      tags: [Auth]
+      summary: Log in or register via Google OAuth2
+      security: []
+      description: |
+        Verifies the Google ID token issued by the client. If the email is not yet registered,
+        a new account is created automatically with `provider = GOOGLE`.
+        Returns 400 if the email already exists as a LOCAL account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTokens'
+        '400':
+          description: Email already registered with a local password account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid or expired Google ID token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /usuaris/logout/:
+    post:
+      tags: [Auth]
+      summary: Log out (blacklist refresh token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  missatge:
+                    type: string
+                    example: Sessió tancada correctament.
+        '400':
+          description: Missing or already-blacklisted refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /usuaris/refresh-token/:
+    post:
+      tags: [Auth]
+      summary: Refresh the access token
+      security: []
+      description: |
+        Returns a new token pair. The old refresh token is blacklisted (`BLACKLIST_AFTER_ROTATION = True`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Missing refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ════════════════════════════════════════════════════════════════════
+  # USERS
+  # ════════════════════════════════════════════════════════════════════
+
+  /usuaris/perfil/:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Missing or invalid access token
+
+  /usuaris/editar/:
+    patch:
+      tags: [Users]
+      summary: Edit user profile (partial update)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditUserRequest'
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error (e.g. username already taken, negative alert days)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /usuaris/canviar-password/:
+    post:
+      tags: [Users]
+      summary: Change password
+      description: |
+        Validates the current password before applying the new one.
+        New password must be at least 8 characters.
+        Returns a fresh token pair so the client does not need to re-login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  missatge:
+                    type: string
+                    example: Contrasenya canviada.
+                  tokens:
+                    $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Wrong current password, missing fields, or new password too short
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /usuaris/eliminar/:
+    delete:
+      tags: [Users]
+      summary: Delete account
+      description: |
+        Permanently deletes the authenticated user's account and all associated data.
+        - **LOCAL accounts**: `password` field is required.
+        - **GOOGLE accounts**: no password needed.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '204':
+          description: Account deleted successfully
+        '400':
+          description: Missing or incorrect password (LOCAL accounts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  # ════════════════════════════════════════════════════════════════════
+  # CATEGORIES
+  # ════════════════════════════════════════════════════════════════════
+
+  /categories/:
+    get:
+      tags: [Categories]
+      summary: List all categories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          description: Missing or invalid access token
+
+  # ════════════════════════════════════════════════════════════════════
+  # PRODUCTS
+  # ════════════════════════════════════════════════════════════════════
+
+  /productes/:
+    get:
+      tags: [Products]
+      summary: List products
+      parameters:
+        - name: categoria
+          in: query
+          description: Filter by category ID
+          schema:
+            type: integer
+            example: 2
+        - name: cerca
+          in: query
+          description: Fuzzy search by product name (Catalan or English via alias_api). Uses thefuzz with a 70-point cutoff.
+          schema:
+            type: string
+            example: milk
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '401':
+          description: Missing or invalid access token
+
+    post:
+      tags: [Products]
+      summary: Create a product (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWriteRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+        '403':
+          description: Admin privileges required
+
+  /productes/{id}/:
+    get:
+      tags: [Products]
+      summary: Retrieve a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found
+
+    put:
+      tags: [Products]
+      summary: Update a product (admin only)
+      description: Partial updates are supported — only provided fields are changed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWriteRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          description: Missing or invalid access token
+        '403':
+          description: Admin privileges required
+        '404':
+          description: Not found
+
+    delete:
+      tags: [Products]
+      summary: Delete a product (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Product deleted
+        '401':
+          description: Missing or invalid access token
+        '403':
+          description: Admin privileges required
+        '404':
+          description: Not found
+
+  # ════════════════════════════════════════════════════════════════════
+  # INVENTORY
+  # ════════════════════════════════════════════════════════════════════
+
+  /inventari/:
+    get:
+      tags: [Inventory]
+      summary: List the authenticated user's inventory
+      description: Results are ordered by `data_caducitat` ascending (nulls last).
+      responses:
+        '200':
+          description: List of inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: Missing or invalid access token
+
+    post:
+      tags: [Inventory]
+      summary: Add a product to the inventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryWriteRequest'
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /inventari/{id}/:
+    get:
+      tags: [Inventory]
+      summary: Retrieve a single inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Inventory item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+    put:
+      tags: [Inventory]
+      summary: Fully update an inventory item
+      description: Updates `quantitat`, `unitat` and/or `data_caducitat`. Other fields are read-only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEditRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+    patch:
+      tags: [Inventory]
+      summary: Partially update an inventory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryEditRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+    delete:
+      tags: [Inventory]
+      summary: Remove an item from the inventory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Item deleted
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+  /inventari/caducitats/:
+    get:
+      tags: [Inventory]
+      summary: List expiring or expired items
+      description: |
+        Returns items whose expiry date falls within the user's configured alert window (`dies_avis_caducitat`).
+
+        - If `dies_avis_caducitat = 0`, only already-expired items are returned (`data_caducitat < today`).
+        - Otherwise, items expiring within the next N days inclusive are returned (`data_caducitat <= today + N`).
+
+        Items without a `data_caducitat` are never included.
+        Results are ordered by `data_caducitat` ascending.
+      responses:
+        '200':
+          description: List of expiring/expired inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: Missing or invalid access token
+
+  # ════════════════════════════════════════════════════════════════════
+  # SHOPPING LIST
+  # ════════════════════════════════════════════════════════════════════
+
+  /compra/:
+    get:
+      tags: [Shopping List]
+      summary: List the authenticated user's shopping list
+      responses:
+        '200':
+          description: Shopping list items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShoppingItem'
+        '401':
+          description: Missing or invalid access token
+
+    post:
+      tags: [Shopping List]
+      summary: Add an item to the shopping list
+      description: Each user can only have one entry per product (`unique_together` constraint).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShoppingWriteRequest'
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingItem'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /compra/{id}/:
+    put:
+      tags: [Shopping List]
+      summary: Fully update a shopping list item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShoppingWriteRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingItem'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+    patch:
+      tags: [Shopping List]
+      summary: Partially update a shopping list item (e.g. mark as purchased)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShoppingWriteRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingItem'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+    delete:
+      tags: [Shopping List]
+      summary: Remove an item from the shopping list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Item deleted
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (or belongs to another user)
+
+  # ════════════════════════════════════════════════════════════════════
+  # RECIPES
+  # ════════════════════════════════════════════════════════════════════
+
+  /receptes/:
+    get:
+      tags: [Recipes]
+      summary: List all recipes (paginated)
+      description: |
+        Returns a paginated list of recipe summaries. Supports filtering and `LimitOffsetPagination`
+        (default limit: 20, max: 100).
+      parameters:
+        - name: dieta
+          in: query
+          description: Filter recipes that contain this diet label (e.g. `vegà`, `vegetarià`).
+          schema:
+            type: string
+            example: vegà
+        - name: intolerancia
+          in: query
+          description: Exclude recipes that contain this intolerance label (e.g. `gluten`, `lactosa`).
+          schema:
+            type: string
+            example: gluten
+        - name: max_temps
+          in: query
+          description: Filter recipes with preparation time ≤ this value (minutes).
+          schema:
+            type: integer
+            example: 30
+        - name: producte
+          in: query
+          description: Filter recipes that include a specific product ID as an ingredient.
+          schema:
+            type: integer
+            example: 5
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated list of recipe summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRecipeSummary'
+        '400':
+          description: Invalid query parameter (e.g. non-integer `max_temps` or `producte`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /receptes/{id}/:
+    get:
+      tags: [Recipes]
+      summary: Retrieve a recipe by Spoonacular ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "716429"
+      responses:
+        '200':
+          description: Full recipe detail including ingredients and instructions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecipeDetail'
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found
+
+  # ════════════════════════════════════════════════════════════════════
+  # FAVOURITES
+  # ════════════════════════════════════════════════════════════════════
+
+  /favorits/:
+    get:
+      tags: [Favourites]
+      summary: List the authenticated user's favourite recipes
+      responses:
+        '200':
+          description: List of favourites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Favourite'
+        '401':
+          description: Missing or invalid access token
+
+    post:
+      tags: [Favourites]
+      summary: Save a recipe as favourite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavouriteWriteRequest'
+      responses:
+        '201':
+          description: Favourite saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Favourite'
+        '400':
+          description: Validation error (e.g. recipe already in favourites)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token
+
+  /favorits/{id}/:
+    delete:
+      tags: [Favourites]
+      summary: Remove a favourite by recipe id_api
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The `id_api` (Spoonacular ID) of the recipe to remove from favourites
+          schema:
+            type: string
+          example: "716429"
+      responses:
+        '204':
+          description: Favourite removed
+        '401':
+          description: Missing or invalid access token
+        '404':
+          description: Not found (recipe not in this user's favourites)
+
+  # ════════════════════════════════════════════════════════════════════
+  # RECOMMENDATIONS
+  # ════════════════════════════════════════════════════════════════════
+
+  /recomanacions/:
+    get:
+      tags: [Recommendations]
+      summary: Get recipe recommendations based on inventory
+      description: |
+        Scores all recipes in the database against the user's current inventory and returns them
+        sorted by score descending. Supports `LimitOffsetPagination` (default limit: 20, max: 100).
+
+        **Scoring algorithm:**
+        - Base score (max 0.85): fraction of recipe ingredients present in the inventory.
+        - Urgency bonus (max 0.15): applied when one or more inventory ingredients are expiring within `dies_avis_caducitat` days. The closer to expiry, the higher the bonus.
+        - Final score is capped at 1.0.
+
+        Recipes with no linked ingredients are excluded from results.
+      parameters:
+        - name: dieta
+          in: query
+          description: Include only recipes with this diet label.
+          schema:
+            type: string
+            example: vegà
+        - name: intolerancia
+          in: query
+          description: Exclude recipes that contain this intolerance label.
+          schema:
+            type: string
+            example: gluten
+        - name: max_temps
+          in: query
+          description: Include only recipes with preparation time ≤ this value (minutes).
+          schema:
+            type: integer
+            example: 30
+        - name: nomes_inventari
+          in: query
+          description: If `true`, return only recipes where **all** ingredients are in the inventory.
+          schema:
+            type: boolean
+            default: false
+            example: true
+        - name: nomes_urgents
+          in: query
+          description: |
+            If `true`, return only recipes that use at least one inventory item expiring within
+            `dies_avis_caducitat` days.
+          schema:
+            type: boolean
+            default: false
+            example: true
+        - name: productes
+          in: query
+          description: |
+            Comma-separated list of product IDs. Restricts the inventory snapshot to only
+            these products when computing scores (useful for "what can I make with these items?").
+          schema:
+            type: string
+            example: "5,12,34"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Paginated list of scored recommendations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRecommendation'
+        '400':
+          description: Invalid query parameter (e.g. non-integer `max_temps` or non-integer values in `productes`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid access token

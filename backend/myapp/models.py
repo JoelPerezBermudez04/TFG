@@ -8,7 +8,7 @@ class Usuari(AbstractUser):
         ('GOOGLE', 'Google'),
     ]
     provider = models.CharField(max_length=10, choices=PROVIDER_CHOICES, default='LOCAL')
-    dies_avis_caducitat = models.IntegerField(default=5) # 0 = notificacions de caducitat desactivades
+    dies_avis_caducitat = models.IntegerField(default=5)
 
 
 class Categoria(models.Model):
@@ -22,11 +22,11 @@ class Categoria(models.Model):
 class Producte(models.Model):
     nom = models.CharField(max_length=100, unique=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-    emoji = models.CharField(max_length=10, default='🛒')#fallback
+    emoji = models.CharField(max_length=10, default='🛒')
     imatge_url = models.URLField(blank=True, null=True)
-
-    # id Spoonacular, nom imatge i nom en anglès per fer matching amb receptes
     alias_api = models.JSONField(blank=True, null=True)
+    dies_caducitat_aprox = models.IntegerField(null=True, blank=True)
+    sinonims = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return f'{self.emoji} {self.nom}'
@@ -49,25 +49,44 @@ class ProducteInventari(models.Model):
     data_afegit = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('usuari', 'producte')
+        ordering = ['data_caducitat']
 
 
 class Recepta(models.Model):
     id_api = models.CharField(max_length=100, primary_key=True)
     nom = models.CharField(max_length=255)
+    nom_en = models.CharField(max_length=255, blank=True)
     descripcio = models.TextField(blank=True)
-    imatge_url = models.URLField()
+    descripcio_en = models.TextField(blank=True)
+    imatge_url = models.URLField(blank=True, null=True)
     temps_preparacio = models.IntegerField()
+    porcions = models.IntegerField(default=1)
+    instruccions = models.JSONField(blank=True, null=True)
+    instruccions_en = models.JSONField(blank=True, null=True)
+    dietes = models.JSONField(blank=True, null=True)
+    dietes_en = models.JSONField(blank=True, null=True)
+    intolerancias = models.JSONField(blank=True, null=True)
+    intolerancias_en = models.JSONField(blank=True, null=True)
+    ingredients_no_vinculats = models.JSONField(blank=True, null=True)
 
     def __str__(self):
         return self.nom
 
 
 class IngredientRecepta(models.Model):
+    UNITATS = [
+        ('g', 'grams'),
+        ('kg', 'kilograms'),
+        ('ml', 'mililitres'),
+        ('L', 'litres'),
+        ('unitat', 'unitat'),
+        ('unitats', 'unitats'),
+    ]
     recepta = models.ForeignKey(Recepta, on_delete=models.CASCADE)
     producte = models.ForeignKey(Producte, on_delete=models.CASCADE)
     quantitat = models.FloatField()
-    unitat = models.CharField(max_length=10)
+    unitat = models.CharField(max_length=10, choices=UNITATS)
+    nom_original = models.CharField(max_length=255, blank=True)
 
     class Meta:
         unique_together = ('recepta', 'producte')
