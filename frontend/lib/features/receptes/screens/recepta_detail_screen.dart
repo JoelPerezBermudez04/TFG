@@ -904,8 +904,14 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
     return InkWell(
       onTap: () async {
         final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+        try {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+        } catch (e) {
+          debugPrint('Error obrint URL: $e');
         }
       },
       borderRadius: BorderRadius.circular(8),
@@ -1084,9 +1090,22 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
             itemCount: recepta.ingredientsNoVinculats!.length,
             separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
             itemBuilder: (context, i) {
-              final nom = recepta.ingredientsNoVinculats![i].toString();
+              final item = recepta.ingredientsNoVinculats![i];
+
+              final nomOriginal =
+                  item['original']?.toString() ??
+                  item['nom']?.toString() ??
+                  'Ingredient';
+
+              final quantitat = item['quantitat'];
+              final unitat = item['unitat']?.toString() ?? '';
+
+              final quantitatText = quantitat != null
+                  ? '$quantitat $unitat'
+                  : unitat;
+
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 9),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(
                   children: [
                     Container(
@@ -1097,24 +1116,31 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Center(
-                        child: Text('❓', style: TextStyle(fontSize: 20)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        nom,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          color: AppColors.textSecondary,
-                          fontStyle: FontStyle.italic,
+                        child: Text(
+                          '❓',
+                          style: TextStyle(fontSize: 20),
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.link_off_outlined,
-                      size: 16,
-                      color: AppColors.textMuted,
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Text(
+                        nomOriginal,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+
+                    Text(
+                      quantitatText,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
