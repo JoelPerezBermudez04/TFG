@@ -47,10 +47,13 @@ class Recepta {
   final List<String>? intolerancias;
   final List<IngredientRecepta> ingredients;
   final int numIngredients;
+  final String nomEn;
+  final List<dynamic>? ingredientsNoVinculats;
 
   const Recepta({
     required this.idApi,
     required this.nom,
+    required this.nomEn,
     this.descripcio,
     this.imatgeUrl,
     required this.tempsPreparacio,
@@ -60,11 +63,13 @@ class Recepta {
     this.intolerancias,
     required this.ingredients,
     required this.numIngredients,
+    this.ingredientsNoVinculats,
   });
 
   factory Recepta.fromJson(Map<String, dynamic> j) => Recepta(
         idApi: j['id_api'] as String,
         nom: j['nom'] as String,
+        nomEn: j['nom_en'] as String? ?? '',
         descripcio: j['descripcio'] as String?,
         imatgeUrl: j['imatge_url'] as String?,
         tempsPreparacio: j['temps_preparacio'] as int,
@@ -88,6 +93,8 @@ class Recepta {
             .toList(),
         numIngredients: j['num_ingredients'] as int? ??
             (j['ingredients'] as List? ?? []).length,
+        ingredientsNoVinculats:
+            j['ingredients_no_vinculats'] as List<dynamic>?,
       );
 }
 
@@ -134,6 +141,7 @@ class Recomanacio {
   Recepta toRecepta() => Recepta(
         idApi: idApi,
         nom: nom,
+        nomEn: '',
         imatgeUrl: imatgeUrl,
         tempsPreparacio: tempsPreparacio,
         porcions: porcions,
@@ -141,6 +149,7 @@ class Recomanacio {
         intolerancias: intolerancias,
         ingredients: const [],
         numIngredients: totalIngredients,
+        ingredientsNoVinculats: null,
       );
 }
 

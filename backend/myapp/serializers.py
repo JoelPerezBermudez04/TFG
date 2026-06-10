@@ -119,10 +119,11 @@ class ReceptaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recepta
         fields = [
-            'id_api', 'nom', 'descripcio', 'imatge_url',
+            'id_api', 'nom', 'nom_en', 'descripcio', 'imatge_url',
             'temps_preparacio', 'porcions',
             'instruccions', 'dietes',
             'ingredients',
+            'ingredients_no_vinculats',
         ]
 
 

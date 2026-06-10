@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../inventari/models/inventory_item_model.dart';
 import '../../inventari/providers/inventory_provider.dart';
@@ -20,6 +21,7 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
   late TabController _tabController;
   late PageController _pageController;
   bool _cookingInProgress = false;
+  bool _descripcioExpanded = false;
 
   @override
   void initState() {
@@ -243,15 +245,12 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
                     if (recepta.descripcio != null &&
                         recepta.descripcio!.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      Text(
-                        recepta.descripcio!,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                          height: 1.5,
-                        ),
-                      ),
+                      _buildDescripcio(recepta.descripcio!),
                     ],
+
+                    // ── Botó recepta original ──
+                    const SizedBox(height: 12),
+                    _buildEnllacOriginal(recepta),
 
                     // ── Botó afegir a la compra ──
                     if (recepta.ingredients.isNotEmpty) ...[
@@ -337,8 +336,9 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
   // Alçada aproximada per al PageView (evitar scroll infinit dins sliver)
   double _estimatedTabHeight(Recepta recepta) {
     final ingCount = recepta.ingredients.length;
+    final noVinculatsCount = recepta.ingredientsNoVinculats?.length ?? 0;
     final stepCount = recepta.instruccions?.length ?? 0;
-    final ingHeight = ingCount * 65.0 + 24;
+    final ingHeight = (ingCount + noVinculatsCount) * 65.0 + (noVinculatsCount > 0 ? 48 : 24);
     final stepHeight = stepCount * 80.0 + 32;
     return (ingHeight > stepHeight ? ingHeight : stepHeight).clamp(200.0, 2000.0);
   }
@@ -854,6 +854,85 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
     );
   }
 
+  // ── Descripció expandible ──
+  static const _maxDescripcioChars = 200;
+
+  Widget _buildDescripcio(String text) {
+    final isCurt = text.length <= _maxDescripcioChars;
+    final textMostrat = (!isCurt && !_descripcioExpanded)
+        ? '${text.substring(0, _maxDescripcioChars).trimRight()}…'
+        : text;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          textMostrat,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        if (!isCurt) ...[
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () => setState(() => _descripcioExpanded = !_descripcioExpanded),
+            child: Text(
+              _descripcioExpanded ? 'Llegir menys ▲' : 'Llegir més ▼',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Enllaç a recepta original de Spoonacular ──
+  Widget _buildEnllacOriginal(Recepta recepta) {
+    final nomSlug = (recepta.nomEn.isNotEmpty ? recepta.nomEn : recepta.nom)
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    final url = 'https://spoonacular.com/$nomSlug-${recepta.idApi}';
+
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.open_in_new_outlined, size: 15, color: AppColors.textMuted),
+            SizedBox(width: 6),
+            Text(
+              'Veure recepta original',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildIngredients(Recepta recepta) {
     if (recepta.ingredients.isEmpty) {
       return const Padding(
@@ -867,7 +946,10 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
 
     final inventoryItems = context.watch<InventoryProvider>().items;
 
-    return ListView.separated(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -973,6 +1055,74 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
           ),
         );
       },
+    ),
+
+        // ── Ingredients no vinculats al sistema ──
+        if (recepta.ingredientsNoVinculats != null &&
+            recepta.ingredientsNoVinculats!.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 14, color: AppColors.textMuted),
+                const SizedBox(width: 6),
+                const Text(
+                  'Ingredients no disponibles al sistema',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            itemCount: recepta.ingredientsNoVinculats!.length,
+            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+            itemBuilder: (context, i) {
+              final nom = recepta.ingredientsNoVinculats![i].toString();
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text('❓', style: TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        nom,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: AppColors.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.link_off_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ],
     );
   }
 
