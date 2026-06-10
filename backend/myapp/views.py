@@ -191,6 +191,8 @@ class UsuariViewSet(ViewSet):
         google_id = idinfo['sub']
         email = idinfo.get('email', '')
         username_base = email.split('@')[0] if email else f'user_{google_id[:8]}'
+        # Limitar a 10 caràcters per evitar overflow
+        username_base = username_base[:10]
         user, created = Usuari.objects.get_or_create(
             email=email,
             defaults={

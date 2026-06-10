@@ -312,7 +312,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final inventory = context.watch<InventoryProvider>();
     final auth = context.watch<AuthProvider>();
     final diesAvis = auth.user?.diesAvisCaducitat ?? 5;
-    final username = auth.user?.username ?? '';
+    // Limitar longitud del nom per evitar overflow
+    String username = auth.user?.username ?? '';
+    if (username.length > 10) {
+      username = '${username.substring(0, 7)}...';
+    }
 
     // Productes urgents (caducat o caduca aviat)
     final urgents = inventory.items
@@ -422,6 +426,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           const SizedBox(height: 2),
           Text(
