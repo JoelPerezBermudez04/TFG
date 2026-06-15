@@ -62,6 +62,7 @@ void main() {
     final recepte = Recepta(
       idApi: 'recepta-1',
       nom: 'Recepta Test',
+      nomEn: 'Test Recipe',
       descripcio: 'Descripció de prova',
       imatgeUrl: null,
       tempsPreparacio: 10,

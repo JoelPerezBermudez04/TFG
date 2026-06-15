@@ -248,10 +248,6 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
                       _buildDescripcio(recepta.descripcio!),
                     ],
 
-                    // ── Botó recepta original ──
-                    const SizedBox(height: 12),
-                    _buildEnllacOriginal(recepta),
-
                     // ── Botó afegir a la compra ──
                     if (recepta.ingredients.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -889,53 +885,6 @@ class _ReceptaDetailScreenState extends State<ReceptaDetailScreen>
           ),
         ],
       ],
-    );
-  }
-
-  // ── Enllaç a recepta original de Spoonacular ──
-  Widget _buildEnllacOriginal(Recepta recepta) {
-    final nomSlug = (recepta.nomEn.isNotEmpty ? recepta.nomEn : recepta.nom)
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'-+'), '-')
-        .replaceAll(RegExp(r'^-|-$'), '');
-    final url = 'https://spoonacular.com/$nomSlug-${recepta.idApi}';
-
-    return InkWell(
-      onTap: () async {
-        final uri = Uri.parse(url);
-
-        try {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-        } catch (e) {
-          debugPrint('Error obrint URL: $e');
-        }
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.open_in_new_outlined, size: 15, color: AppColors.textMuted),
-            SizedBox(width: 6),
-            Text(
-              'Veure recepta original',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

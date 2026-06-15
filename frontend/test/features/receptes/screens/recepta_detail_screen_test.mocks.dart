@@ -183,6 +183,27 @@ class MockReceptesProvider extends _i1.Mock implements _i2.ReceptesProvider {
       );
 
   @override
+  void setRecomanacionsFiltres({
+    List<String>? dietes,
+    int? maxTemps,
+    bool? nomesInventari,
+    bool? nomesUrgents,
+  }) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #setRecomanacionsFiltres,
+          [],
+          {
+            #dietes: dietes,
+            #maxTemps: maxTemps,
+            #nomesInventari: nomesInventari,
+            #nomesUrgents: nomesUrgents,
+          },
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void setProducte(
     int? id,
     String? nom,
