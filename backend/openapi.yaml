@@ -13,7 +13,7 @@ info:
     Access tokens expire after 30 minutes. Use `/usuaris/refresh-token/` to get a new pair.
 
     ## Permissions
-    | Role | Capabilities |
+    | Role | Capabilities | 
     |------|-------------|
     | Any (unauthenticated) | `POST /usuaris/registre/`, `POST /usuaris/login/`, `POST /usuaris/refresh-token/`, `POST /usuaris/google/` |
     | Authenticated user | All other endpoints (own data only) |
