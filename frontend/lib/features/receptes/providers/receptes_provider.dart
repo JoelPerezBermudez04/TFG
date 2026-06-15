@@ -47,10 +47,13 @@ class Recepta {
   final List<String>? intolerancias;
   final List<IngredientRecepta> ingredients;
   final int numIngredients;
+  final String nomEn;
+  final List<dynamic>? ingredientsNoVinculats;
 
   const Recepta({
     required this.idApi,
     required this.nom,
+    required this.nomEn,
     this.descripcio,
     this.imatgeUrl,
     required this.tempsPreparacio,
@@ -60,11 +63,13 @@ class Recepta {
     this.intolerancias,
     required this.ingredients,
     required this.numIngredients,
+    this.ingredientsNoVinculats,
   });
 
   factory Recepta.fromJson(Map<String, dynamic> j) => Recepta(
         idApi: j['id_api'] as String,
         nom: j['nom'] as String,
+        nomEn: j['nom_en'] as String? ?? '',
         descripcio: j['descripcio'] as String?,
         imatgeUrl: j['imatge_url'] as String?,
         tempsPreparacio: j['temps_preparacio'] as int,
@@ -88,6 +93,8 @@ class Recepta {
             .toList(),
         numIngredients: j['num_ingredients'] as int? ??
             (j['ingredients'] as List? ?? []).length,
+        ingredientsNoVinculats:
+            j['ingredients_no_vinculats'] as List<dynamic>?,
       );
 }
 
@@ -134,6 +141,7 @@ class Recomanacio {
   Recepta toRecepta() => Recepta(
         idApi: idApi,
         nom: nom,
+        nomEn: '',
         imatgeUrl: imatgeUrl,
         tempsPreparacio: tempsPreparacio,
         porcions: porcions,
@@ -141,6 +149,7 @@ class Recomanacio {
         intolerancias: intolerancias,
         ingredients: const [],
         numIngredients: totalIngredients,
+        ingredientsNoVinculats: null,
       );
 }
 
@@ -189,14 +198,8 @@ class ReceptesProvider with ChangeNotifier {
   String? _error;
   int _total = 0;
   int _offset = 0;
-  static const int _limit = 20;
-  bool get hasMore {
-    // Si hi ha filtre local actiu (cerca o múltiples dietes), no paginem automàticament
-    // perquè el filtre ja s'aplica sobre tots els resultats carregats
-    final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
-    if (teFiltreLocal) return false;
-    return _offset < _serverTotal;
-  }
+  static const int _limit = 500;
+  bool get hasMore => !_modeRecomanacions && _producteId != null && _offset < _serverTotal;
   int _serverTotal = 0;
 
   // Filtres actius
@@ -273,7 +276,33 @@ class ReceptesProvider with ChangeNotifier {
       _aplicarFiltres();
     }
   }
-  void setMaxTemps(int? v) { _maxTemps = v; _aplicarFiltres(); }
+
+  void setMaxTemps(int? v) {
+    _maxTemps = v;
+    if (_modeRecomanacions) {
+      _fetchRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
+
+  void setRecomanacionsFiltres({
+    List<String>? dietes,
+    int? maxTemps,
+    bool? nomesInventari,
+    bool? nomesUrgents,
+  }) {
+    if (dietes != null) _dietes = dietes;
+    _maxTemps = maxTemps;
+    if (nomesInventari != null) _nomesInventari = nomesInventari;
+    if (nomesUrgents != null) _nomesUrgents = nomesUrgents;
+
+    if (_modeRecomanacions) {
+      _fetchRecomanacions();
+    } else {
+      _aplicarFiltres();
+    }
+  }
 
   // setProducte usa mode B (servidor), no filtre local
   void setProducte(int? id, String? nom) {
@@ -437,11 +466,6 @@ class ReceptesProvider with ChangeNotifier {
         }
         _offset = _totsReceptes.length;
         _aplicarFiltres();
-        if (_offset < _serverTotal) {
-          _isLoading = false;
-          fetchReceptes(loadMore: true);
-          return;
-        }
       } else {
         _error = 'Error carregant receptes';
       }
@@ -538,18 +562,7 @@ class ReceptesProvider with ChangeNotifier {
           _recomanacions = results;
         }
         _offset = _recomanacions.length;
-        // Filtres locals sobre els resultats del servidor
         _aplicarFiltresRecomanacions(notify: false);
-
-        // Paginació automàtica només si no hi ha filtre local de cerca actiu,
-        // ja que el buscador filtra sobre els resultats ja carregats
-        final teFiltreLocal = _search.isNotEmpty || _dietes.length > 1;
-        if (!teFiltreLocal && _offset < _serverTotal) {
-          _isLoading = false;
-          notifyListeners();
-          _fetchRecomanacions(loadMore: true);
-          return;
-        }
       } else {
         _error = 'Error carregant recomanacions';
       }

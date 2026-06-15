@@ -340,10 +340,8 @@ def guardar_recepta(info: dict) -> tuple[Recepta, bool]:
                 "text": step.get("step", ""),
             })
 
-    # ── Dietes i intoleràncies (en anglès, per traduir més tard) ──
+    # ── Dietes (en anglès, per traduir més tard) ──
     dietes_en = info.get("diets", [])
-    # dishTypes = tipus de plat (lunch, dinner...), NO són intoleràncies
-    intolerancias_en = []  # Spoonacular no exposa intoleràncies per recepta
 
     recepta = Recepta.objects.create(
         id_api=id_api,
@@ -358,8 +356,6 @@ def guardar_recepta(info: dict) -> tuple[Recepta, bool]:
         instruccions_en=instruccions_en if instruccions_en else [],  # ← Lista buida, mai NULL
         dietes=None,
         dietes_en=dietes_en if dietes_en else [],  # ← Lista buida, mai NULL
-        intolerancias=None,
-        intolerancias_en=intolerancias_en if intolerancias_en else [],  # ← Lista buida, mai NULL
         ingredients_no_vinculats=[],
     )
 

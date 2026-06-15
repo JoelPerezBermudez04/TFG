@@ -191,6 +191,8 @@ class UsuariViewSet(ViewSet):
         google_id = idinfo['sub']
         email = idinfo.get('email', '')
         username_base = email.split('@')[0] if email else f'user_{google_id[:8]}'
+        # Limitar a 10 caràcters per evitar overflow
+        username_base = username_base[:10]
         user, created = Usuari.objects.get_or_create(
             email=email,
             defaults={
@@ -413,14 +415,11 @@ class ReceptaViewSet(ViewSet):
     def list(self, request):
         qs = Recepta.objects.prefetch_related('ingredientrecepta_set').all()
         dieta = request.query_params.get('dieta')
-        intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
         producte = request.query_params.get('producte')
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
-        if intolerancia:
-            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -441,8 +440,8 @@ class ReceptaViewSet(ViewSet):
                 )
 
         paginator = LimitOffsetPagination()
-        paginator.default_limit = 20
-        paginator.max_limit = 100
+        paginator.default_limit = 500
+        paginator.max_limit = 500
 
         page = paginator.paginate_queryset(qs, request)
         return paginator.get_paginated_response(ReceptaResumSerializer(page, many=True).data)
@@ -551,15 +550,12 @@ class RecomanacioViewSet(ViewSet):
         avui = timezone.now().date()
         qs = Recepta.objects.prefetch_related('ingredientrecepta_set__producte').all()
         dieta = request.query_params.get('dieta')
-        intolerancia = request.query_params.get('intolerancia')
         max_temps = request.query_params.get('max_temps')
         nomes_inv = request.query_params.get('nomes_inventari', 'false').lower() == 'true'
         nomes_urg = request.query_params.get('nomes_urgents',   'false').lower() == 'true'
 
         if dieta:
             qs = qs.filter(dietes__contains=dieta)
-        if intolerancia:
-            qs = qs.exclude(intolerancias__contains=intolerancia)
         if max_temps:
             try:
                 qs = qs.filter(temps_preparacio__lte=int(max_temps))
@@ -614,7 +610,6 @@ class RecomanacioViewSet(ViewSet):
                 'temps_preparacio' : recepta.temps_preparacio,
                 'porcions' : recepta.porcions,
                 'dietes' : recepta.dietes,
-                'intolerancias' : recepta.intolerancias,
                 'score' : score,
                 'ingredients_coberts' : coberts,
                 'total_ingredients' : len(ings),
@@ -623,8 +618,8 @@ class RecomanacioViewSet(ViewSet):
 
         resultats.sort(key=lambda r: r['score'], reverse=True)
         paginator = LimitOffsetPagination()
-        paginator.default_limit = 20
-        paginator.max_limit = 100
+        paginator.default_limit = 500
+        paginator.max_limit = 500
         page = paginator.paginate_queryset(resultats, request)
 
         return paginator.get_paginated_response(RecomanacioSerializer(page, many=True).data)

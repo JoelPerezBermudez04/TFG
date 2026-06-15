@@ -26,6 +26,10 @@ dependencies:
 
   flutter_dotenv: ^5.1.0
 
+  flutter_svg: ^2.0.8
+
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -50,4 +54,5 @@ flutter:
           weight: 800
   assets:
     - assets/images/google_logo.png
+    - assets/images/rebrot_logo.png
     - .env

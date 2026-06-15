@@ -453,12 +453,6 @@ components:
             type: string
           nullable: true
           example: [vegetarià, vegà]
-        intolerancias:
-          type: array
-          items:
-            type: string
-          nullable: true
-          example: [gluten]
         num_ingredients:
           type: integer
           readOnly: true
@@ -501,12 +495,6 @@ components:
             type: string
           nullable: true
           example: [vegetarià]
-        intolerancias:
-          type: array
-          items:
-            type: string
-          nullable: true
-          example: [gluten]
         ingredients:
           type: array
           items:
@@ -628,11 +616,6 @@ components:
           type: integer
           example: 2
         dietes:
-          type: array
-          items:
-            type: string
-          nullable: true
-        intolerancias:
           type: array
           items:
             type: string
@@ -1406,7 +1389,7 @@ paths:
       summary: List all recipes (paginated)
       description: |
         Returns a paginated list of recipe summaries. Supports filtering and `LimitOffsetPagination`
-        (default limit: 20, max: 100).
+        (default limit: 500, max: 500).
       parameters:
         - name: dieta
           in: query
@@ -1414,12 +1397,6 @@ paths:
           schema:
             type: string
             example: vegà
-        - name: intolerancia
-          in: query
-          description: Exclude recipes that contain this intolerance label (e.g. `gluten`, `lactosa`).
-          schema:
-            type: string
-            example: gluten
         - name: max_temps
           in: query
           description: Filter recipes with preparation time ≤ this value (minutes).
@@ -1436,8 +1413,8 @@ paths:
           in: query
           schema:
             type: integer
-            default: 20
-            maximum: 100
+            default: 500
+            maximum: 500
         - name: offset
           in: query
           schema:
@@ -1557,7 +1534,7 @@ paths:
       summary: Get recipe recommendations based on inventory
       description: |
         Scores all recipes in the database against the user's current inventory and returns them
-        sorted by score descending. Supports `LimitOffsetPagination` (default limit: 20, max: 100).
+        sorted by score descending. Supports `LimitOffsetPagination` (default limit: 500, max: 500).
 
         **Scoring algorithm:**
         - Base score (max 0.85): fraction of recipe ingredients present in the inventory.
@@ -1572,12 +1549,6 @@ paths:
           schema:
             type: string
             example: vegà
-        - name: intolerancia
-          in: query
-          description: Exclude recipes that contain this intolerance label.
-          schema:
-            type: string
-            example: gluten
         - name: max_temps
           in: query
           description: Include only recipes with preparation time ≤ this value (minutes).
@@ -1612,8 +1583,8 @@ paths:
           in: query
           schema:
             type: integer
-            default: 20
-            maximum: 100
+            default: 500
+            maximum: 500
         - name: offset
           in: query
           schema:

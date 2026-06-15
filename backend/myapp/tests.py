@@ -22,14 +22,13 @@ def auth_client(user, password='Passw0rd_Test!'): #NOSONAR
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
     return client
 
-def crear_recepta(id_api, nom, temps=30, porcions=2, dietes=None, intolerancias=None):
+def crear_recepta(id_api, nom, temps=30, porcions=2, dietes=None):
     return Recepta.objects.create(
         id_api=id_api,
         nom=nom,
         temps_preparacio=temps,
         porcions=porcions,
         dietes=dietes or [],
-        intolerancias=intolerancias or [],
     )
 
 
@@ -556,7 +555,7 @@ class ReceptaTests(APITestCase):
         self.client = auth_client(self.user)
 
         self.r1 = crear_recepta('r1', 'Amanida vegana', temps=10, dietes=['vegà'])
-        self.r2 = crear_recepta('r2', 'Bistec a la graella', temps=20, intolerancias=['lactosa'])
+        self.r2 = crear_recepta('r2', 'Bistec a la graella', temps=20)
         self.r3 = crear_recepta('r3', 'Sopa de carbassa', temps=60)
 
         self.categoria = Categoria.objects.create(nom='Verdures2', emoji='🥦')
@@ -576,12 +575,6 @@ class ReceptaTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         noms = [r['nom'] for r in resp.data['results']]
         self.assertIn('Amanida vegana', noms)
-        self.assertNotIn('Bistec a la graella', noms)
-
-    def test_filtre_intolerancia_exclou_recepta(self):
-        resp = self.client.get('/receptes/?intolerancia=lactosa')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        noms = [r['nom'] for r in resp.data['results']]
         self.assertNotIn('Bistec a la graella', noms)
 
     def test_filtre_max_temps(self):
@@ -687,7 +680,7 @@ class RecomanacioTests(APITestCase):
         IngredientRecepta.objects.create(recepta=self.r1, producte=self.p1, quantitat=2, unitat='unitats')
         IngredientRecepta.objects.create(recepta=self.r1, producte=self.p2, quantitat=100, unitat='g')
 
-        self.r2 = crear_recepta('rec2', 'Pasta amb formatge', temps=20, intolerancias=['lactosa'])
+        self.r2 = crear_recepta('rec2', 'Pasta amb formatge', temps=20)
         IngredientRecepta.objects.create(recepta=self.r2, producte=self.p3, quantitat=50, unitat='g')
 
         self.r3 = crear_recepta('rec3', 'Estofat llarg', temps=120)
@@ -717,12 +710,6 @@ class RecomanacioTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         noms = [r['nom'] for r in resp.data['results']]
         self.assertIn('Truita de patates', noms)
-        self.assertNotIn('Pasta amb formatge', noms)
-
-    def test_filtre_intolerancia(self):
-        resp = self.client.get('/recomanacions/?intolerancia=lactosa')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        noms = [r['nom'] for r in resp.data['results']]
         self.assertNotIn('Pasta amb formatge', noms)
 
     def test_filtre_max_temps(self):

@@ -149,7 +149,7 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            const Text('FreshTrack v1.0.0', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            const Text('Rebost v1.0.0', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ],
         ),
       ),

@@ -65,8 +65,6 @@ class Recepta(models.Model):
     instruccions_en = models.JSONField(blank=True, null=True)
     dietes = models.JSONField(blank=True, null=True)
     dietes_en = models.JSONField(blank=True, null=True)
-    intolerancias = models.JSONField(blank=True, null=True)
-    intolerancias_en = models.JSONField(blank=True, null=True)
     ingredients_no_vinculats = models.JSONField(blank=True, null=True)
 
     def __str__(self):

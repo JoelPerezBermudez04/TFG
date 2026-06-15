@@ -109,7 +109,7 @@ void main() {
     testWidgets('mostra la versió de l\'app', (tester) async {
       await tester.pumpWidget(buildSubject());
 
-      expect(find.text('FreshTrack v1.0.0'), findsOneWidget);
+      expect(find.text('Rebost v1.0.0'), findsOneWidget);
     });
   });
 

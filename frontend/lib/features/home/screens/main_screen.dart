@@ -237,6 +237,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final ApiService _api;
+  late final InventoryProvider _inventoryProvider;
 
   List<_RecomanacioResumida> _recomanacions = [];
   bool _loadingRec = false;
@@ -247,6 +248,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _api = widget.api ?? ApiService();
+    _inventoryProvider = context.read<InventoryProvider>();
+    _inventoryProvider.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchRecomanacions();
     });
@@ -254,15 +257,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _inventoryProvider.removeListener(_onInventoryChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onInventoryChanged() {
+    if (!mounted) return;
+    _fetchRecomanacions();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Refrescar inventari quan l'app torna al primer pla
     if (state == AppLifecycleState.resumed && mounted) {
-      context.read<InventoryProvider>().fetchInventory();
+      _inventoryProvider.fetchInventory();
     }
   }
 
@@ -303,7 +312,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final inventory = context.watch<InventoryProvider>();
     final auth = context.watch<AuthProvider>();
     final diesAvis = auth.user?.diesAvisCaducitat ?? 5;
-    final username = auth.user?.username ?? '';
+    // Limitar longitud del nom per evitar overflow
+    String username = auth.user?.username ?? '';
+    if (username.length > 10) {
+      username = '${username.substring(0, 7)}...';
+    }
 
     // Productes urgents (caducat o caduca aviat)
     final urgents = inventory.items
@@ -413,6 +426,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           const SizedBox(height: 2),
           Text(

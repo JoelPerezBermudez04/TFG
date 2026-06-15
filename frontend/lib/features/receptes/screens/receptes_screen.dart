@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../inventari/providers/inventory_provider.dart';
 import '../providers/receptes_provider.dart';
 import 'recepta_detail_screen.dart';
 
@@ -16,25 +17,37 @@ class _ReceptesScreenState extends State<ReceptesScreen>
   late TabController _tabController;
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  late final InventoryProvider _inventoryProvider;
+  late final ReceptesProvider _receptesProvider;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    final provider = context.read<ReceptesProvider>();
+    _receptesProvider = context.read<ReceptesProvider>();
+    _inventoryProvider = context.read<InventoryProvider>();
+    _inventoryProvider.addListener(_onInventoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      provider.fetchReceptes();
-      provider.fetchFavorits();
+      _receptesProvider.fetchReceptes();
+      _receptesProvider.fetchFavorits();
     });
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _inventoryProvider.removeListener(_onInventoryChanged);
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onInventoryChanged() {
+    if (!mounted) return;
+    if (_receptesProvider.modeRecomanacions) {
+      _receptesProvider.fetchReceptes();
+    }
   }
 
   void _onScroll() {
@@ -722,6 +735,155 @@ class _FiltresSheetState extends State<_FiltresSheet> {
     'Compatible amb FODMAP',
   ];
 
+  static const _dietesInfo = {
+    'Vegetarià': (
+      emoji: '🥦',
+      desc: 'No inclou carn ni peix, però sí ous, làctics i mel.',
+    ),
+    'Vegà': (
+      emoji: '🌱',
+      desc: 'Exclou tots els productes d\'origen animal: carn, peix, ous, làctics i mel.',
+    ),
+    'Lacto-ovo-vegetarià': (
+      emoji: '🥚',
+      desc: 'No inclou carn ni peix. Permet ous i productes làctics.',
+    ),
+    'Pescatarià': (
+      emoji: '🐟',
+      desc: 'Exclou la carn però permet peix i marisc.',
+    ),
+    'Sense gluten': (
+      emoji: '🌾',
+      desc: 'No conté blat, ordi, sègol ni espelta. Apta per a celíacs i sensibles al gluten.',
+    ),
+    'Sense làctics': (
+      emoji: '🥛',
+      desc: 'No conté llet ni cap derivat làctic (formatge, iogurt, mantega...).',
+    ),
+    'Cetogènica': (
+      emoji: '🥑',
+      desc: 'Molt baixa en carbohidrats i alta en greixos. Indueix la cetosi per cremar greix com a font d\'energia.',
+    ),
+    'Paleolítica': (
+      emoji: '🍖',
+      desc: 'Basada en aliments no processats: carn, peix, fruita, verdura i fruits secs. Exclou cereals, llegums i làctics.',
+    ),
+    'Primal': (
+      emoji: '🫙',
+      desc: 'Similar a la paleolítica però permet làctics d\'alta qualitat i alguns aliments fermentats.',
+    ),
+    'Whole30': (
+      emoji: '📅',
+      desc: 'Programa de 30 dies que elimina sucre afegit, cereals, llegums, làctics i additius. Enfocada a reiniciar hàbits alimentaris.',
+    ),
+    'Baix en FODMAP': (
+      emoji: '🔬',
+      desc: 'Redueix els hidrats de carboni fermentables (FODMAP) per alleujar símptomes de l\'intestí irritable.',
+    ),
+    'Compatible amb FODMAP': (
+      emoji: '✅',
+      desc: 'Receptes que compleixen les directrius FODMAP i són adequades per a persones amb síndrome de l\'intestí irritable.',
+    ),
+  };
+
+  void _mostrarInfoDietes([String? dietaFocus]) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                color: AppColors.primaryLight,
+                child: Row(
+                  children: [
+                    const Text('ℹ️', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Tipus de dietes',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Column(
+                    children: _opcions.map((dieta) {
+                      final info = _dietesInfo[dieta];
+                      if (info == null) return const SizedBox.shrink();
+                      final isHighlighted = dieta == dietaFocus;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isHighlighted ? AppColors.primaryLight : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isHighlighted ? AppColors.primary : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(info.emoji, style: const TextStyle(fontSize: 20)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    dieta,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isHighlighted
+                                          ? AppColors.primary
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    info.desc,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -868,11 +1030,37 @@ class _FiltresSheetState extends State<_FiltresSheet> {
             const SizedBox(height: 16),
 
             // Dieta
-            const Text('Dieta',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+            Row(
+              children: [
+                const Text('Dieta',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary)),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => _mostrarInfoDietes(),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.info_outline_rounded,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (_dietes.isNotEmpty)
+                  Text(
+                    '${_dietes.length} seleccionad${_dietes.length == 1 ? 'a' : 'es'}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -881,13 +1069,14 @@ class _FiltresSheetState extends State<_FiltresSheet> {
                   .map((d) => _selectableChip(
                         d,
                         _dietes.contains(d),
-                        () => setState(() {
+                        onTap: () => setState(() {
                           if (_dietes.contains(d)) {
                             _dietes.remove(d);
                           } else {
                             _dietes.add(d);
                           }
                         }),
+                        onLongPress: () => _mostrarInfoDietes(d),
                       ))
                   .toList(),
             ),
@@ -937,9 +1126,11 @@ class _FiltresSheetState extends State<_FiltresSheet> {
     );
   }
 
-  Widget _selectableChip(String label, bool selected, VoidCallback onTap) =>
+  Widget _selectableChip(String label, bool selected,
+      {required VoidCallback onTap, VoidCallback? onLongPress}) =>
       GestureDetector(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -950,24 +1141,31 @@ class _FiltresSheetState extends State<_FiltresSheet> {
               color: selected ? AppColors.primary : Colors.grey.shade200,
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: selected ? Colors.white : AppColors.textSecondary,
-              fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.normal,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: selected ? Colors.white : AppColors.textSecondary,
+                  fontWeight:
+                      selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
         ),
       );
 
   void _aplicar() {
     final p = context.read<ReceptesProvider>();
-    p.setDietes(_dietes.toList());
-    p.setMaxTemps(_maxTemps?.toInt());
-    p.setNomesInventari(_nomesInventari);
-    p.setNomesUrgents(_nomesUrgents);
+    p.setRecomanacionsFiltres(
+      dietes: _dietes.toList(),
+      maxTemps: _maxTemps?.toInt(),
+      nomesInventari: _nomesInventari,
+      nomesUrgents: _nomesUrgents,
+    );
     Navigator.pop(context);
   }
 }
