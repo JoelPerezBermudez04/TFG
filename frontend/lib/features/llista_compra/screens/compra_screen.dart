@@ -47,6 +47,16 @@ class _CompraScreenState extends State<CompraScreen> {
       appBar: AppBar(
         title: const Text('Llista de la compra'),
         actions: [
+          if (pendents.isNotEmpty)
+            TextButton.icon(
+              onPressed: () => _marcarTotsIAfegirARebost(context, provider),
+              icon: const Icon(Icons.checklist_outlined,
+                  size: 18, color: AppColors.primary),
+              label: const Text(
+                'Marcar tots',
+                style: TextStyle(color: AppColors.primary, fontSize: 13),
+              ),
+            ),
           if (comprats.isNotEmpty)
             TextButton.icon(
               onPressed: () => _confirmDeleteComprats(context, provider),
@@ -218,6 +228,112 @@ class _CompraScreenState extends State<CompraScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => const _AddManualSheet(),
     );
+  }
+
+  Future<void> _marcarTotsIAfegirARebost(
+      BuildContext context, CompraProvider provider) async {
+    final pendentsActuals = provider.pendents.toList();
+    if (pendentsActuals.isEmpty) return;
+
+    await provider.markAllPendentsComprats();
+
+    if (!mounted) return;
+    _showAfegirTotsARebostDialog(context, pendentsActuals);
+  }
+
+  void _showAfegirTotsARebostDialog(
+      BuildContext context, List<CompraItem> items) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Text('🧺', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Afegir al rebost',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Vols afegir els ${items.length} productes comprats al rebost?',
+          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Ara no',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _afegirTotsAlRebost(items);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Afegir al rebost'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _afegirTotsAlRebost(List<CompraItem> items) async {
+    final api = ApiService();
+    int afegits = 0;
+    int errors = 0;
+
+    for (final item in items) {
+      try {
+        final response = await api.post('/inventari/', {
+          'producte': item.producte,
+          'quantitat': item.quantitat,
+          'unitat': item.unitat,
+        });
+        if (response['statusCode'] == 201) {
+          afegits++;
+        } else {
+          errors++;
+        }
+      } catch (_) {
+        errors++;
+      }
+    }
+
+    if (!mounted) return;
+    if (errors == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$afegits producte${afegits != 1 ? 's' : ''} afegit${afegits != 1 ? 's' : ''} al rebost'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else if (afegits > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$afegits afegit${afegits != 1 ? 's' : ''} correctament, $errors amb error'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error afegint productes al rebost'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _showAfegirARebostDialog(CompraItem item) {

@@ -149,6 +149,16 @@ class CompraProvider with ChangeNotifier {
     }
   }
 
+  /// Marca tots els items pendents com a comprats.
+  /// Retorna la llista d'items que acabaven de ser pendents.
+  Future<List<CompraItem>> markAllPendentsComprats() async {
+    final pendentsActuals = pendents.toList();
+    for (final item in pendentsActuals) {
+      await toggleComprat(item.id);
+    }
+    return pendentsActuals;
+  }
+
   void _sortItems() {
     _items.sort((a, b) {
       if (a.comprat == b.comprat) {
