@@ -262,7 +262,7 @@ class ProductDetailScreen extends StatelessWidget {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${item.producteNom} marcat com a $action.toLowerCase()'),
+            content: Text('${item.producteNom} marcat com a ${action.toLowerCase()}'),
             backgroundColor: action == 'Consumit' ? AppColors.success : AppColors.warning,
           ),
         );
