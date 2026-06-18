@@ -161,6 +161,9 @@ class ItemCompraSerializer(serializers.ModelSerializer):
     producte_nom = serializers.CharField(source=PRODUCTE_NOM_SOURCE, read_only=True)
     producte_emoji = serializers.CharField(source=PRODUCTE_EMOJI_SOURCE, read_only=True)
     producte_imatge_url = serializers.URLField(source=PRODUCTE_IMATGE_URL_SOURCE, read_only=True)
+    producte_dies_caducitat_aprox = serializers.IntegerField(
+        source='producte.dies_caducitat_aprox', read_only=True, allow_null=True
+    )
     categoria_id = serializers.IntegerField(source='producte.categoria.id', read_only=True)
     categoria_nom = serializers.CharField(source='producte.categoria.nom', read_only=True)
     categoria_emoji = serializers.CharField(source='producte.categoria.emoji', read_only=True)

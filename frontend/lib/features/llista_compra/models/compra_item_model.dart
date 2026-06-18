@@ -8,6 +8,7 @@ class CompraItem {
   final int? categoriaId;
   final String? categoriaNom;
   final String? categoriaEmoji;
+  final int? producteDiesCaducitatAprox;
   final double quantitat;
   final String unitat;
   final bool comprat;
@@ -23,6 +24,7 @@ class CompraItem {
     this.categoriaId,
     this.categoriaNom,
     this.categoriaEmoji,
+    this.producteDiesCaducitatAprox,
     required this.quantitat,
     required this.unitat,
     required this.comprat,
@@ -40,6 +42,7 @@ class CompraItem {
       categoriaId: json['categoria_id'],
       categoriaNom: json['categoria_nom'],
       categoriaEmoji: json['categoria_emoji'],
+      producteDiesCaducitatAprox: json['producte_dies_caducitat_aprox'],
       quantitat: (json['quantitat'] as num).toDouble(),
       unitat: json['unitat'],
       comprat: json['comprat'] ?? false,
@@ -58,6 +61,7 @@ class CompraItem {
       categoriaId: categoriaId,
       categoriaNom: categoriaNom,
       categoriaEmoji: categoriaEmoji,
+      producteDiesCaducitatAprox: producteDiesCaducitatAprox,
       quantitat: quantitat,
       unitat: unitat,
       comprat: comprat ?? this.comprat,

@@ -296,11 +296,20 @@ class _CompraScreenState extends State<CompraScreen> {
 
     for (final item in items) {
       try {
-        final response = await api.post('/inventari/', {
+        final body = <String, dynamic>{
           'producte': item.producte,
           'quantitat': item.quantitat,
           'unitat': item.unitat,
-        });
+        };
+        final dies = item.producteDiesCaducitatAprox;
+        if (dies != null) {
+          final dataCaducitat = DateTime.now().add(Duration(days: dies));
+          body['data_caducitat'] =
+              '${dataCaducitat.year.toString().padLeft(4, '0')}-'
+              '${dataCaducitat.month.toString().padLeft(2, '0')}-'
+              '${dataCaducitat.day.toString().padLeft(2, '0')}';
+        }
+        final response = await api.post('/inventari/', body);
         if (response['statusCode'] == 201) {
           afegits++;
         } else {
